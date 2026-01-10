@@ -296,12 +296,11 @@
     });
 
     // ==========================================
-    // 1. STAFF LOGIC (Secure & Layout Optimized)
+    // 1. STAFF LOGIC
     // ==========================================
     function initStaffMode() {
         document.body.classList.add('mode-staff');
         
-        // Auth Listener
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('auth-display').innerText = `User: ${user.email}`;
@@ -333,7 +332,6 @@
             btn.innerText = i;
             const data = cardCache[i];
             
-            // Dynamic Coloring
             if (data && data.status) {
                 if (data.status === 'initial') btn.classList.add('st-initial');
                 else if (data.status === 'end') btn.classList.add('st-end');
@@ -351,7 +349,6 @@
         document.getElementById('s-target-num').innerText = id;
         document.getElementById('custom-msg-input').value = '';
         
-        // Unlock Controls
         const controls = document.getElementById('s-controls');
         controls.style.opacity = 1;
         controls.style.pointerEvents = 'auto';
@@ -364,7 +361,6 @@
         const data = cardCache[id];
         const screen = document.getElementById('prev-screen');
         
-        // Reset Logic
         screen.className = 'preview-body';
         
         if (!data || !data.status) {
@@ -388,13 +384,12 @@
             icon = info.icon; title = info.title; desc = info.desc;
         }
         
-        // Truncate for preview
         if(desc.length > 20) desc = desc.substring(0, 20) + '...';
         
         screen.innerHTML = `<span class="prev-icon">${icon}</span><div class="prev-title">${title}</div><div class="prev-msg">${desc}</div><div class="prev-time">更新: ${data.time}</div>`;
     }
 
-    // --- WRITER FUNCTIONS (Exposed to Global) ---
+    // --- WRITER FUNCTIONS ---
     window.updateStatus = (statusKey) => { if (window.selectedCardId) saveStatusToCloud(statusKey, null); };
     window.sendCustomMessage = () => {
         if (!window.selectedCardId) return;
@@ -408,9 +403,10 @@
         const id = window.selectedCardId;
         const currentData = cardCache[id] || {};
         
-        // SESSION LOGIC: Force new session if currently empty/ended
+        // [ZOMBIE FIX 1] Always generate new session on END or if currently END
+        // This ensures old clients are invalidated immediately
         let currentSess = currentData.sessionId;
-        if (!currentSess || currentData.status === 'end' || !currentData.status) {
+        if (!currentSess || statusKey === 'end' || currentData.status === 'end') {
             currentSess = generateSessionId();
         }
 
@@ -430,7 +426,7 @@
     }
 
     // ==========================================
-    // 2. PATIENT LOGIC (Auto-Checkin & Secure)
+    // 2. PATIENT LOGIC
     // ==========================================
     let myHeldSessionId = null; 
 
@@ -438,11 +434,9 @@
         document.body.classList.add('mode-patient');
         document.getElementById('p-num').innerText = id;
 
-        // 1. Session Persistence (Prevents Ghost Re-connect)
         const storedSess = sessionStorage.getItem('er_sess_' + id);
         if (storedSess) myHeldSessionId = storedSess;
 
-        // 2. Auto Check-in (Delayed to ensure DB connection)
         setTimeout(() => checkInPatient(id), 1500);
     }
 
@@ -450,8 +444,12 @@
         if (!db) return;
         const data = cardCache[id] || {};
 
-        // Only check-in if: I have no session AND the slot is free/ended
-        if (!myHeldSessionId && (!data.status || data.status === 'end')) {
+        // [ZOMBIE FIX 2] Do NOT auto-init if card is already 'end' or occupied
+        // Only init if it's truly empty/undefined
+        // This prevents re-opening a closed browser from hijacking an 'end' card back to 'initial'
+        const isCardEmpty = !data.status; 
+        
+        if (!myHeldSessionId && isCardEmpty) {
             const newSess = generateSessionId();
             myHeldSessionId = newSess;
             sessionStorage.setItem('er_sess_' + id, newSess);
@@ -467,7 +465,6 @@
             } catch(e) { console.error("Check-in blocked (Normal if slot busy)", e); }
         }
         
-        // Force initial render
         syncPatientView(id);
     }
 
@@ -475,8 +472,8 @@
         const data = cardCache[id];
         const container = document.getElementById('patient-app');
         const contentArea = document.getElementById('p-content-area');
+        const storageKey = 'er_sess_' + id;
         
-        // Reset Classes
         container.className = ''; 
         document.getElementById('p-view-body').className = 'p-body';
 
@@ -485,14 +482,16 @@
             return; 
         }
 
-        // ★ GHOST CHECK ★
+        // [ZOMBIE FIX 3] Ghost Check & Clear Storage on Mismatch
         if (myHeldSessionId && data.sessionId && data.sessionId !== myHeldSessionId) {
+            sessionStorage.removeItem(storageKey); 
             renderEndScreen(contentArea, container, data.time, true);
             return;
         }
 
         // END STATE
         if (data.status === 'end') {
+            sessionStorage.removeItem(storageKey); 
             renderEndScreen(contentArea, container, data.time, false);
             return;
         }
@@ -505,16 +504,18 @@
         } else {
             const info = STATUS_MAP[data.status] || STATUS_MAP['initial'];
             if (info.alert) container.classList.add('mode-alert');
-            if (data.status === 'ward') container.classList.add('mode-ward'); // 病棟用スタイル適用
+            if (data.status === 'ward') container.classList.add('mode-ward'); 
             icon = info.icon; title = info.title; desc = info.desc;
         }
         
         contentArea.innerHTML = `<span class="p-icon">${icon}</span><div class="p-title">${title}</div><div class="p-info-box"><div class="p-msg">${desc}</div><div class="p-time">更新: ${data.time}</div></div>`;
+        document.getElementById('p-time').innerText = `更新: ${data.time}`;
     }
 
     function renderEndScreen(el, container, time, isGhost) {
         container.classList.add('mode-end');
         el.innerHTML = `<span class="p-icon">🔚</span><div class="p-title">終了</div><div class="p-info-box"><div class="p-msg" style="font-weight:bold;">${isGhost ? '接続が切断されました<br>(新しい診察が開始されています)' : '本日の受付通知は終了しました'}</div><div class="p-time">最終更新: ${time}</div></div>`;
+        document.getElementById('p-time').innerText = `最終更新: ${time}`;
     }
 
 </script>
