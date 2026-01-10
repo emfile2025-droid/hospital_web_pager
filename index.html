@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ER状況共有システム</title>
+<style>
+    /* --- DESIGN SYSTEM --- */
+    :root {
+        --bg-staff: #2d3436;
+        --bg-patient: #f5f6fa;
+        --c-blue: #0984e3; --c-red: #d63031; --c-purple: #6c5ce7;
+        --c-orange: #e17055; --c-yellow: #fdcb6e; --c-green: #00b894;
+        --c-grey: #636e72; --c-teal: #00cec9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Yu Gothic", sans-serif; }
+    body { height: 100vh; overflow: hidden; margin: 0; }
+    
+    /* View Switcher */
+    #staff-app, #patient-app { display: none; height: 100%; width: 100%; }
+    body.mode-staff #staff-app { display: flex; }
+    body.mode-patient #patient-app { display: flex; }
+
+    /* === STAFF UI STYLES === */
+    #staff-app { background: var(--bg-staff); color: white; flex-direction: column; }
+    .staff-header { padding: 15px; background: #000; border-bottom: 1px solid #555; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    .staff-body { flex: 1; display: flex; overflow: hidden; }
+    
+    /* Sidebar Grid */
+    .card-list { width: 320px; background: #222; padding: 10px; overflow-y: auto; border-right: 1px solid #555; display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 60px; gap: 8px; flex-shrink: 0; }
+    .s-card { background: #444; border: 2px solid #555; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; color: #aaa; font-size: 1.2rem; user-select: none; position: relative; transition: all 0.2s; }
+    .s-card:hover { filter: brightness(1.2); }
+    .s-card.active { border-color: white; box-shadow: 0 0 0 2px white inset; z-index: 10; }
+    
+    /* Dynamic Status Colors */
+    .s-card.st-initial { border: 2px solid var(--c-green); color: white; background: #2d3436; }
+    .s-card.st-initial::after { content: 'ONLINE'; position: absolute; bottom: 2px; font-size: 0.6rem; color: var(--c-green); }
+    .s-card.st-exam_start, .s-card.st-analyzing { background: var(--c-blue); color: white; border: none; }
+    .s-card.st-emergency { background: var(--c-red); color: white; border: none; animation: pulse 1s infinite; }
+    .s-card.st-test_start, .s-card.st-test_add { background: var(--c-purple); color: white; border: none; }
+    .s-card.st-image_wait { background: var(--c-orange); color: white; border: none; }
+    .s-card.st-long_wait { background: var(--c-yellow); color: #333; border: none; }
+    .s-card.st-explain_15, .s-card.st-er_wait { background: var(--c-green); color: white; border: none; }
+    .s-card.st-custom { background: var(--c-teal); color: #333; border: none; }
+    .s-card.st-end { opacity: 0.4; }
+
+    /* Controls Area */
+    .controls { flex: 1; padding: 20px; overflow-y: auto; background: #2d3436; display: flex; flex-direction: column; }
+    
+    /* Live Preview Monitor */
+    .preview-area { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 20px; align-items: center; border: 1px solid #444; }
+    .preview-phone { width: 180px; height: 320px; background: white; border-radius: 18px; border: 6px solid #333; overflow: hidden; position: relative; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .preview-header { background: #2d3436; height: 30px; width: 100%; margin-bottom: 5px; flex-shrink: 0; }
+    .preview-body { flex: 1; padding: 10px; display: flex; flex-direction: column; align-items: center; text-align: center; color: #333; overflow: hidden; justify-content: center; }
+    .prev-icon { font-size: 3.5rem; margin-bottom: 10px; display: block; line-height: 1; }
+    .prev-title { font-size: 1rem; font-weight: 800; margin-bottom: 5px; line-height: 1.2; color: #2d3436; }
+    .prev-msg { font-size: 0.7rem; color: #636e72; background: #f1f2f6; padding: 8px; border-radius: 8px; width: 100%; line-height: 1.4; }
+    
+    /* Preview Modes */
+    .preview-body.mode-alert { background: #fff5f5; } .preview-body.mode-alert .prev-title { color: var(--c-red); }
+    .preview-body.mode-custom { background: #e0f7fa; } .preview-body.mode-custom .prev-title { color: #006064; }
+    .preview-body.mode-end { background: #eee; } .preview-body.mode-end .prev-icon { opacity: 0.3; }
+
+    /* Input & Buttons */
+    .custom-input-area { background: #3a4244; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #555; }
+    .custom-input-row { display: flex; gap: 10px; margin-top: 10px; }
+    input[type="text"] { flex: 1; padding: 12px; border-radius: 6px; border: none; font-size: 1rem; outline: none; }
+    .btn-send { background: var(--c-teal); color: #2d3436; font-weight: bold; cursor: pointer; padding: 0 25px; border: none; border-radius: 6px; transition: opacity 0.2s; }
+    .btn-send:hover { opacity: 0.8; }
+    
+    .btn-group { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .btn { padding: 14px; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 0.95rem; cursor: pointer; text-align: left; display: flex; align-items: center; transition: transform 0.1s, filter 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn:active { transform: scale(0.98); }
+    .btn i { font-size: 1.4rem; margin-right: 12px; width: 30px; text-align: center; }
+    
+    .bg-blue { background: var(--c-blue); } .bg-red { background: var(--c-red); } .bg-purple { background: var(--c-purple); }
+    .bg-orange { background: var(--c-orange); } .bg-yellow { background: var(--c-yellow); color: #333; } .bg-green { background: var(--c-green); } .bg-grey { background: var(--c-grey); }
+
+    /* === PATIENT UI STYLES === */
+    #patient-app { background: var(--bg-patient); flex-direction: column; align-items: center; justify-content: center; }
+    .phone-container { width: 100%; max-width: 480px; height: 100%; background: white; display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(0,0,0,0.1); }
+    .p-header { background: #2d3436; color: white; padding: 18px; text-align: center; font-weight: bold; font-size: 1.1rem; }
+    .p-body { flex: 1; padding: 30px; display: flex; flex-direction: column; align-items: center; text-align: center; overflow-y: auto; }
+    .p-badge { background: #dfe6e9; padding: 6px 16px; border-radius: 20px; font-weight: bold; color: #636e72; margin-bottom: 30px; font-size: 0.9rem; }
+    .p-icon { font-size: 7rem; margin: 20px 0 30px; display: block; line-height: 1; }
+    .p-title { font-size: 2rem; font-weight: 800; color: #2d3436; margin-bottom: 20px; line-height: 1.3; }
+    .p-msg { font-size: 1.1rem; color: #636e72; line-height: 1.8; background: #f1f2f6; padding: 20px; border-radius: 12px; width: 100%; word-break: break-all; }
+    .p-time { font-size: 0.85rem; color: #b2bec3; margin-top: auto; width: 100%; text-align: right; padding-top: 20px; }
+    
+    /* Patient States */
+    .mode-alert .p-body { background: #fff5f5; } .mode-alert .p-title { color: var(--c-red); }
+    .mode-custom .p-body { background: #e0f7fa; } .mode-custom .p-title { color: #006064; }
+    .mode-end .p-body { background: #eee; justify-content: center; } .mode-end .p-icon { opacity: 0.2; } .mode-end .p-title { color: #aaa; }
+    
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+</style>
+</head>
+<body>
+
+<div id="staff-app">
+    <div class="staff-header">
+        <h2>🏥 ER Status Console</h2>
+        <div style="font-size:0.8rem; color:#aaa; display:flex; gap:10px; align-items:center;">
+            <span id="auth-display">Auth: Checking...</span>
+            <span id="sys-status">Server: Connecting...</span>
+        </div>
+    </div>
+    <div class="staff-body">
+        <div class="card-list" id="s-grid">
+            <div style="padding:20px; color:#aaa;">Loading Cards...</div>
+        </div>
+        
+        <div class="controls" id="s-controls" style="opacity:0.3; pointer-events:none;">
+            <div class="preview-area">
+                <div style="flex:1;">
+                    <div style="font-size:1.4rem; margin-bottom:10px; border-bottom:1px solid #555; padding-bottom:5px;">
+                        操作対象: <span id="s-target-num" style="color:var(--c-blue); font-weight:bold;">--</span>
+                    </div>
+                    <p style="font-size:0.85rem; color:#aaa; line-height:1.5;">
+                        <span style="color:var(--c-green);">●</span> リアルタイムプレビュー<br>
+                        患者様のスマホ画面を同期表示しています。
+                    </p>
+                </div>
+                <div style="text-align:center;">
+                    <div class="preview-phone">
+                        <div class="preview-header"></div>
+                        <div class="preview-body" id="prev-screen">
+                            <span class="prev-icon">📷</span>
+                            <div class="prev-title">未接続</div>
+                            <div class="prev-msg">QR読取待機中</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="custom-input-area">
+                <div style="font-size:0.85rem; color:#ccc; font-weight:bold;">📩 自由記述メッセージ</div>
+                <div class="custom-input-row">
+                    <input type="text" id="custom-msg-input" placeholder="例: 1番診察室の前にお越しください">
+                    <button class="btn-send" onclick="sendCustomMessage()">送信</button>
+                </div>
+            </div>
+            
+            <div style="flex:1;">
+                <p style="color:#aaa; font-size:0.8rem; margin-bottom:8px; border-left:3px solid #555; padding-left:8px;">診察・処置状況</p>
+                <div class="btn-group">
+                    <button class="btn bg-blue" onclick="updateStatus('exam_start')"><i>👨‍⚕️</i>診察開始</button>
+                    <button class="btn bg-red" onclick="updateStatus('emergency')"><i>🚑</i>緊急処置中</button>
+                </div>
+                
+                <p style="color:#aaa; font-size:0.8rem; margin-bottom:8px; border-left:3px solid #555; padding-left:8px;">検査・分析</p>
+                <div class="btn-group">
+                    <button class="btn bg-purple" onclick="updateStatus('test_start')"><i>💉</i>検査開始</button>
+                    <button class="btn bg-purple" onclick="updateStatus('test_add')"><i>➕</i>追加検査</button>
+                    <button class="btn bg-orange" onclick="updateStatus('image_wait')"><i>☢️</i>画像呼出待ち</button>
+                    <button class="btn bg-blue" onclick="updateStatus('analyzing')"><i>🔬</i>結果分析中</button>
+                </div>
+                
+                <p style="color:#aaa; font-size:0.8rem; margin-bottom:8px; border-left:3px solid #555; padding-left:8px;">案内・待機</p>
+                <div class="btn-group">
+                    <button class="btn bg-yellow" onclick="updateStatus('long_wait')"><i>⏳</i>時間かかります</button>
+                    <button class="btn bg-green" onclick="updateStatus('explain_15')"><i>🕐</i>あと15分で説明</button>
+                    <button class="btn bg-green" onclick="updateStatus('er_wait')"><i>💺</i>待合室へ</button>
+                </div>
+                
+                <hr style="border:0; border-top:1px solid #555; margin:20px 0;">
+                
+                <div class="btn-group">
+                    <button class="btn bg-grey" onclick="updateStatus('end')"><i>🔚</i>受付終了 (切断)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="patient-app">
+    <div class="phone-container">
+        <div class="p-header">救急外来 状況案内</div>
+        <div class="p-body" id="p-view-body">
+            <div class="p-badge">整理番号 No.<span id="p-num">--</span></div>
+            <div id="p-content-area">
+                <span class="p-icon">📷</span>
+                <div class="p-title">QR読取待機</div>
+                <div class="p-msg">状況更新を待っています...</div>
+            </div>
+            <div class="p-time" id="p-time"></div>
+            <div style="font-size:0.6rem; color:#ccc; margin-top:10px; opacity:0.5;">Secure Session Active</div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    // ==========================================================
+    // ★重要: ここにあなたのFirebase Configを貼り付けてください★
+    // ==========================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyBqjMZAaCD7h4E6QUyHsxzU4ghryCKhy2k",
+  authDomain: "hospital-family-pager.firebaseapp.com",
+  projectId: "hospital-family-pager",
+  storageBucket: "hospital-family-pager.firebasestorage.app",
+  messagingSenderId: "866783025354",
+  appId: "1:866783025354:web:a991e3844b31a0a2197c33",
+  measurementId: "G-51EFLJLJ18"
+    };
+
+    // --- CONSTANTS ---
+    const TOTAL_CARDS = 50;
+    const STATUS_MAP = {
+        'initial':    { icon: '🏥', title: '受付完了', desc: '順番にトリアージ・診察の準備を行っています。そのままお待ちください。', alert: false },
+        'exam_start': { icon: '👨‍⚕️', title: '診察中', desc: '医師による診察・処置を行っています。', alert: false },
+        'emergency':  { icon: '🚑', title: '緊急処置中', desc: '緊急の処置を行っています。対応にお時間を頂きます。', alert: true },
+        'test_start': { icon: '💉', title: '検査実施中', desc: '血液検査や生理機能検査を行っています。', alert: false },
+        'test_add':   { icon: '➕', title: '追加検査', desc: '詳細に調べるため、追加の検査を受け付けました。', alert: false },
+        'image_wait': { icon: '☢️', title: '画像検査 待機', desc: 'CT・レントゲン等の検査待ちです。技師からの呼び出しをお待ちください。', alert: false },
+        'analyzing':  { icon: '🔬', title: '結果分析中', desc: '検査結果が出ました。医師が内容を確認・分析しています。', alert: false },
+        'long_wait':  { icon: '⏳', title: '待機中', desc: '現在、処置や検査にお時間を頂いています。しばらくお待ちください。', alert: false },
+        'explain_15': { icon: '🕐', title: 'まもなく説明', desc: 'あと15分ほどで医師より説明を行う予定です。待合室でお待ちください。', alert: false },
+        'er_wait':    { icon: '💺', title: '待合室へ', desc: '救急外来の待合室へ移動してお待ちください。', alert: false },
+        'custom':     { icon: '📩', title: 'お知らせ', desc: '', alert: false },
+        'end':        { icon: '✅', title: '終了', desc: '本日の受付通知は終了しました。', alert: false }
+    };
+
+    // --- HELPERS ---
+    const generateSessionId = () => Math.random().toString(36).substring(2, 12);
+    const getNowStr = () => { const now = new Date(); return `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`; };
+
+    // --- APP STATE ---
+    let db, auth;
+    let cardCache = {};
+    window.selectedCardId = null;
+
+    // --- INITIALIZATION ---
+    try {
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+        
+        // Realtime Listener
+        onSnapshot(collection(db, 'cards'), (snapshot) => {
+            document.getElementById('sys-status').innerText = "Server: Connected (Tokyo)";
+            
+            snapshot.docChanges().forEach((change) => {
+                cardCache[change.doc.id] = change.doc.data();
+            });
+
+            // Trigger Re-renders
+            if (document.body.classList.contains('mode-staff')) {
+                renderStaffGrid();
+                if (window.selectedCardId) renderPreview(window.selectedCardId);
+            } else if (document.body.classList.contains('mode-patient')) {
+                const myId = document.getElementById('p-num').innerText;
+                if (myId && myId !== '--') syncPatientView(myId);
+            }
+        }, (err) => {
+            console.error("Firestore Error:", err);
+            document.getElementById('sys-status').innerText = "Server: Error (Check Config)";
+        });
+
+    } catch (e) {
+        console.error("Init Error:", e);
+        document.getElementById('sys-status').innerText = "Error: Config Missing?";
+    }
+
+    // --- MODE SWITCHER ---
+    window.addEventListener('DOMContentLoaded', () => {
+        const myId = new URLSearchParams(window.location.search).get('id');
+        if (myId) initPatientMode(myId); 
+        else initStaffMode();
+    });
+
+    // ==========================================
+    // 1. STAFF LOGIC (Secure)
+    // ==========================================
+    function initStaffMode() {
+        document.body.classList.add('mode-staff');
+        
+        // Auth Listener
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('auth-display').innerText = `User: ${user.email}`;
+                renderStaffGrid();
+            } else {
+                performStaffLogin();
+            }
+        });
+    }
+
+    function performStaffLogin() {
+        const email = prompt("【職員認証】メールアドレスを入力:", "");
+        const password = prompt("【職員認証】パスワードを入力:", "");
+        if (email && password) {
+            signInWithEmailAndPassword(auth, email, password)
+                .then(() => alert("認証成功: システムに接続しました"))
+                .catch((e) => { alert("認証失敗: " + e.message); location.reload(); });
+        } else {
+            alert("利用にはログインが必要です");
+        }
+    }
+
+    function renderStaffGrid() {
+        const grid = document.getElementById('s-grid');
+        grid.innerHTML = '';
+        for (let i = 1; i <= TOTAL_CARDS; i++) {
+            const btn = document.createElement('div');
+            btn.className = 's-card';
+            btn.innerText = i;
+            const data = cardCache[i];
+            
+            // Dynamic Coloring
+            if (data && data.status) {
+                if (data.status === 'initial') btn.classList.add('st-initial');
+                else if (data.status === 'end') btn.classList.add('st-end');
+                else btn.classList.add('st-' + data.status);
+            }
+            if (i == window.selectedCardId) btn.classList.add('active');
+            
+            btn.onclick = () => selectStaffCard(i);
+            grid.appendChild(btn);
+        }
+    }
+
+    function selectStaffCard(id) {
+        window.selectedCardId = id;
+        document.getElementById('s-target-num').innerText = id;
+        document.getElementById('custom-msg-input').value = '';
+        
+        // Unlock Controls
+        const controls = document.getElementById('s-controls');
+        controls.style.opacity = 1;
+        controls.style.pointerEvents = 'auto';
+        
+        renderStaffGrid();
+        renderPreview(id);
+    }
+
+    function renderPreview(id) {
+        const data = cardCache[id];
+        const screen = document.getElementById('prev-screen');
+        
+        // Reset Logic
+        screen.className = 'preview-body';
+        
+        if (!data || !data.status) {
+            screen.innerHTML = `<span class="prev-icon">📷</span><div class="prev-title">未接続</div><div class="prev-msg">QR読取待機中</div>`;
+            return;
+        }
+        if (data.status === 'end') {
+            screen.classList.add('mode-end');
+            screen.innerHTML = `<span class="prev-icon">🔚</span><div class="prev-title">終了</div><div class="prev-msg">受付終了しました</div>`;
+            return;
+        }
+
+        let icon='', title='', desc='';
+        if (data.status === 'custom') {
+            screen.classList.add('mode-custom');
+            const def = STATUS_MAP['custom']; icon = def.icon; title = def.title; desc = data.message || '(メッセージなし)';
+        } else {
+            const info = STATUS_MAP[data.status] || STATUS_MAP['initial'];
+            if (info.alert) screen.classList.add('mode-alert');
+            icon = info.icon; title = info.title; desc = info.desc;
+        }
+        
+        // Truncate for preview
+        if(desc.length > 25) desc = desc.substring(0, 25) + '...';
+        
+        screen.innerHTML = `<span class="prev-icon">${icon}</span><div class="prev-title">${title}</div><div class="prev-msg">${desc}</div>`;
+    }
+
+    // --- WRITER FUNCTIONS (Exposed to Global) ---
+    window.updateStatus = (statusKey) => { if (window.selectedCardId) saveStatusToCloud(statusKey, null); };
+    window.sendCustomMessage = () => {
+        if (!window.selectedCardId) return;
+        const text = document.getElementById('custom-msg-input').value.trim();
+        if (!text) return alert("メッセージを入力してください");
+        saveStatusToCloud('custom', text);
+    };
+
+    async function saveStatusToCloud(statusKey, customText) {
+        if (!db) return;
+        const id = window.selectedCardId;
+        const currentData = cardCache[id] || {};
+        
+        // SESSION LOGIC: Force new session if currently empty/ended
+        let currentSess = currentData.sessionId;
+        if (!currentSess || currentData.status === 'end' || !currentData.status) {
+            currentSess = generateSessionId();
+        }
+
+        const payload = {
+            status: statusKey,
+            time: getNowStr(),
+            message: customText,
+            sessionId: currentSess
+        };
+
+        try {
+            await setDoc(doc(db, "cards", String(id)), payload, { merge: true });
+        } catch(e) {
+            console.error(e);
+            alert("通信エラー: ログイン状態を確認してください");
+        }
+    }
+
+    // ==========================================
+    // 2. PATIENT LOGIC (Auto-Checkin & Secure)
+    // ==========================================
+    let myHeldSessionId = null; 
+
+    function initPatientMode(id) {
+        document.body.classList.add('mode-patient');
+        document.getElementById('p-num').innerText = id;
+
+        // 1. Session Persistence (Prevents Ghost Re-connect)
+        const storedSess = sessionStorage.getItem('er_sess_' + id);
+        if (storedSess) myHeldSessionId = storedSess;
+
+        // 2. Auto Check-in (Delayed to ensure DB connection)
+        setTimeout(() => checkInPatient(id), 1500);
+    }
+
+    async function checkInPatient(id) {
+        if (!db) return;
+        const data = cardCache[id] || {};
+
+        // Only check-in if: I have no session AND the slot is free/ended
+        if (!myHeldSessionId && (!data.status || data.status === 'end')) {
+            const newSess = generateSessionId();
+            myHeldSessionId = newSess;
+            sessionStorage.setItem('er_sess_' + id, newSess);
+            
+            try {
+                // Rule: Unauthenticated user can ONLY write if status == 'initial'
+                await setDoc(doc(db, "cards", String(id)), {
+                    status: 'initial',
+                    time: getNowStr(),
+                    sessionId: newSess,
+                    message: null
+                });
+            } catch(e) { console.error("Check-in blocked (Normal if slot busy)", e); }
+        }
+        
+        // Force initial render
+        syncPatientView(id);
+    }
+
+    function syncPatientView(id) {
+        const data = cardCache[id];
+        const container = document.getElementById('patient-app');
+        const contentArea = document.getElementById('p-content-area');
+        
+        // Reset Classes
+        container.className = ''; 
+        document.getElementById('p-view-body').className = 'p-body';
+
+        if (!data || !data.status) { 
+            contentArea.innerHTML = `<span class="p-icon">🤔</span><div class="p-title">未登録</div><div class="p-msg">データを取得中...</div>`; 
+            return; 
+        }
+
+        // ★ GHOST CHECK ★
+        if (myHeldSessionId && data.sessionId && data.sessionId !== myHeldSessionId) {
+            renderEndScreen(contentArea, container, data.time, true);
+            return;
+        }
+
+        // END STATE
+        if (data.status === 'end') {
+            renderEndScreen(contentArea, container, data.time, false);
+            return;
+        }
+
+        // ACTIVE STATE
+        let icon='', title='', desc='';
+        if (data.status === 'custom') {
+            container.classList.add('mode-custom');
+            const def = STATUS_MAP['custom']; icon = def.icon; title = def.title; desc = data.message || '(メッセージなし)';
+        } else {
+            const info = STATUS_MAP[data.status] || STATUS_MAP['initial'];
+            if (info.alert) container.classList.add('mode-alert');
+            icon = info.icon; title = info.title; desc = info.desc;
+        }
+        
+        contentArea.innerHTML = `<span class="p-icon">${icon}</span><div class="p-title">${title}</div><div class="p-msg">${desc}</div>`;
+        document.getElementById('p-time').innerText = `更新: ${data.time}`;
+    }
+
+    function renderEndScreen(el, container, time, isGhost) {
+        container.classList.add('mode-end');
+        el.innerHTML = `<span class="p-icon">🔚</span><div class="p-title">終了</div><div class="p-msg" style="font-weight:bold;">${isGhost ? '接続が切断されました<br>(新しい診察が開始されています)' : '本日の受付通知は終了しました'}</div>`;
+        document.getElementById('p-time').innerText = `最終更新: ${time}`;
+    }
+
+</script>
+</body>
+</html>
