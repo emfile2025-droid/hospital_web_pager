@@ -46,26 +46,13 @@
     .s-card.st-custom { background: var(--c-teal); color: #333; border: none; }
     .s-card.st-end { opacity: 0.4; }
 
-    /* Controls Area (Default Mobile View) */
+    /* Controls Area */
     .controls { flex: 1; padding: 20px; overflow-y: auto; background: #2d3436; display: flex; flex-direction: column; gap: 20px; }
     .controls-left-panel, .controls-right-panel { display: flex; flex-direction: column; gap: 20px; }
 
-    /* ★★★ iPad / Desktop Layout Optimization ★★★ */
     @media (min-width: 768px) {
-        .controls {
-            display: grid;
-            grid-template-columns: 380px 1fr; /* Left fixed width, Right takes rest */
-            grid-template-rows: 1fr;
-            gap: 30px;
-            align-items: start;
-            overflow-y: hidden; /* Hide main scrollbar */
-        }
-        .controls-right-panel {
-            overflow-y: auto; /* Scroll only buttons if needed */
-            max-height: 100%;
-            padding-right: 5px;
-        }
-        /* Slight adjustment for preview area on wider screens */
+        .controls { display: grid; grid-template-columns: 380px 1fr; grid-template-rows: 1fr; gap: 30px; align-items: start; overflow-y: hidden; }
+        .controls-right-panel { overflow-y: auto; max-height: 100%; padding-right: 5px; }
         .preview-area { flex-direction: row; text-align: left; }
         .preview-info { margin-bottom: 0; margin-right: 20px; }
     }
@@ -78,7 +65,8 @@
     .preview-body { flex: 1; padding: 8px; display: flex; flex-direction: column; align-items: center; text-align: center; color: #333; overflow: hidden; justify-content: center; }
     .prev-icon { font-size: 3rem; margin-bottom: 8px; display: block; line-height: 1; }
     .prev-title { font-size: 0.9rem; font-weight: 800; margin-bottom: 4px; line-height: 1.2; color: #2d3436; }
-    .prev-msg { font-size: 0.65rem; color: #636e72; background: #f1f2f6; padding: 6px; border-radius: 6px; width: 100%; line-height: 1.4; }
+    .prev-msg { font-size: 0.65rem; color: #636e72; background: #f1f2f6; padding: 6px; border-radius: 6px; width: 100%; line-height: 1.4; margin-bottom: 5px; }
+    .prev-time { font-size: 0.7rem; font-weight: bold; color: #d63031; border-top: 1px dashed #ccc; width: 100%; padding-top: 4px; margin-top: 4px; }
     
     /* Preview Modes */
     .preview-body.mode-alert { background: #fff5f5; } .preview-body.mode-alert .prev-title { color: var(--c-red); }
@@ -86,12 +74,11 @@
     .preview-body.mode-ward { background: #f3e5f5; } .preview-body.mode-ward .prev-title { color: var(--c-ward); }
     .preview-body.mode-end { background: #eee; } .preview-body.mode-end .prev-icon { opacity: 0.3; }
 
-    /* Input & Buttons */
+    /* Buttons */
     .custom-input-area { background: #3a4244; padding: 15px; border-radius: 8px; border: 1px solid #555; }
     .custom-input-row { display: flex; gap: 10px; margin-top: 10px; }
     input[type="text"] { flex: 1; padding: 12px; border-radius: 6px; border: none; font-size: 1rem; outline: none; }
-    .btn-send { background: var(--c-teal); color: #2d3436; font-weight: bold; cursor: pointer; padding: 0 20px; border: none; border-radius: 6px; transition: opacity 0.2s; white-space: nowrap; }
-    .btn-send:hover { opacity: 0.8; }
+    .btn-send { background: var(--c-teal); color: #2d3436; font-weight: bold; cursor: pointer; padding: 0 20px; border: none; border-radius: 6px; }
     
     .btn-group { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px; }
     .btn { padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 0.9rem; cursor: pointer; text-align: left; display: flex; align-items: center; transition: transform 0.1s, filter 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
@@ -109,10 +96,13 @@
     .p-header { background: #2d3436; color: white; padding: 18px; text-align: center; font-weight: bold; font-size: 1.1rem; }
     .p-body { flex: 1; padding: 30px; display: flex; flex-direction: column; align-items: center; text-align: center; overflow-y: auto; }
     .p-badge { background: #dfe6e9; padding: 6px 16px; border-radius: 20px; font-weight: bold; color: #636e72; margin-bottom: 30px; font-size: 0.9rem; }
-    .p-icon { font-size: 7rem; margin: 20px 0 30px; display: block; line-height: 1; }
+    .p-icon { font-size: 7rem; margin: 10px 0 20px; display: block; line-height: 1; }
     .p-title { font-size: 2rem; font-weight: 800; color: #2d3436; margin-bottom: 20px; line-height: 1.3; }
-    .p-msg { font-size: 1.1rem; color: #636e72; line-height: 1.8; background: #f1f2f6; padding: 20px; border-radius: 12px; width: 100%; word-break: break-all; }
-    .p-time { font-size: 0.85rem; color: #b2bec3; margin-top: auto; width: 100%; text-align: right; padding-top: 20px; }
+    
+    /* Time & Msg Container */
+    .p-info-box { background: #f1f2f6; padding: 20px; border-radius: 12px; width: 100%; margin-top: auto; border: 1px solid #e1e1e1; }
+    .p-msg { font-size: 1.1rem; color: #636e72; line-height: 1.6; margin-bottom: 15px; word-break: break-all; }
+    .p-time { font-size: 1.2rem; font-weight: bold; color: #d63031; border-top: 2px dashed #ccc; padding-top: 10px; width: 100%; display: block; }
     
     /* Patient States */
     .mode-alert .p-body { background: #fff5f5; } .mode-alert .p-title { color: var(--c-red); }
@@ -157,6 +147,7 @@
                             <span class="prev-icon">📷</span>
                             <div class="prev-title">未接続</div>
                             <div class="prev-msg">QR読取待機中</div>
+                            <div class="prev-time">更新: --:--</div>
                         </div>
                     </div>
                 </div>
@@ -210,10 +201,12 @@
             <div id="p-content-area">
                 <span class="p-icon">📷</span>
                 <div class="p-title">QR読取待機</div>
-                <div class="p-msg">状況更新を待っています...</div>
+                <div class="p-info-box">
+                    <div class="p-msg">状況更新を待っています...</div>
+                    <div class="p-time">更新: --:--</div>
+                </div>
             </div>
-            <div class="p-time" id="p-time"></div>
-            <div style="font-size:0.6rem; color:#ccc; margin-top:10px; opacity:0.5;">Secure Session Active</div>
+            <div style="font-size:0.6rem; color:#ccc; margin-top:20px; opacity:0.5;">Secure Session Active</div>
         </div>
     </div>
 </div>
@@ -375,12 +368,12 @@
         screen.className = 'preview-body';
         
         if (!data || !data.status) {
-            screen.innerHTML = `<span class="prev-icon">📷</span><div class="prev-title">未接続</div><div class="prev-msg">QR読取待機中</div>`;
+            screen.innerHTML = `<span class="prev-icon">📷</span><div class="prev-title">未接続</div><div class="prev-msg">QR読取待機中</div><div class="prev-time">更新: --:--</div>`;
             return;
         }
         if (data.status === 'end') {
             screen.classList.add('mode-end');
-            screen.innerHTML = `<span class="prev-icon">🔚</span><div class="prev-title">終了</div><div class="prev-msg">受付終了しました</div>`;
+            screen.innerHTML = `<span class="prev-icon">🔚</span><div class="prev-title">終了</div><div class="prev-msg">受付終了しました</div><div class="prev-time">更新: ${data.time}</div>`;
             return;
         }
 
@@ -391,14 +384,14 @@
         } else {
             const info = STATUS_MAP[data.status] || STATUS_MAP['initial'];
             if (info.alert) screen.classList.add('mode-alert');
-            if (data.status === 'ward') screen.classList.add('mode-ward'); // 病棟用スタイル
+            if (data.status === 'ward') screen.classList.add('mode-ward'); 
             icon = info.icon; title = info.title; desc = info.desc;
         }
         
         // Truncate for preview
-        if(desc.length > 25) desc = desc.substring(0, 25) + '...';
+        if(desc.length > 20) desc = desc.substring(0, 20) + '...';
         
-        screen.innerHTML = `<span class="prev-icon">${icon}</span><div class="prev-title">${title}</div><div class="prev-msg">${desc}</div>`;
+        screen.innerHTML = `<span class="prev-icon">${icon}</span><div class="prev-title">${title}</div><div class="prev-msg">${desc}</div><div class="prev-time">更新: ${data.time}</div>`;
     }
 
     // --- WRITER FUNCTIONS (Exposed to Global) ---
@@ -488,7 +481,7 @@
         document.getElementById('p-view-body').className = 'p-body';
 
         if (!data || !data.status) { 
-            contentArea.innerHTML = `<span class="p-icon">🤔</span><div class="p-title">未登録</div><div class="p-msg">データを取得中...</div>`; 
+            contentArea.innerHTML = `<span class="p-icon">🤔</span><div class="p-title">未登録</div><div class="p-info-box"><div class="p-msg">データを取得中...</div></div>`; 
             return; 
         }
 
@@ -516,14 +509,12 @@
             icon = info.icon; title = info.title; desc = info.desc;
         }
         
-        contentArea.innerHTML = `<span class="p-icon">${icon}</span><div class="p-title">${title}</div><div class="p-msg">${desc}</div>`;
-        document.getElementById('p-time').innerText = `更新: ${data.time}`;
+        contentArea.innerHTML = `<span class="p-icon">${icon}</span><div class="p-title">${title}</div><div class="p-info-box"><div class="p-msg">${desc}</div><div class="p-time">更新: ${data.time}</div></div>`;
     }
 
     function renderEndScreen(el, container, time, isGhost) {
         container.classList.add('mode-end');
-        el.innerHTML = `<span class="p-icon">🔚</span><div class="p-title">終了</div><div class="p-msg" style="font-weight:bold;">${isGhost ? '接続が切断されました<br>(新しい診察が開始されています)' : '本日の受付通知は終了しました'}</div>`;
-        document.getElementById('p-time').innerText = `最終更新: ${time}`;
+        el.innerHTML = `<span class="p-icon">🔚</span><div class="p-title">終了</div><div class="p-info-box"><div class="p-msg" style="font-weight:bold;">${isGhost ? '接続が切断されました<br>(新しい診察が開始されています)' : '本日の受付通知は終了しました'}</div><div class="p-time">最終更新: ${time}</div></div>`;
     }
 
 </script>
