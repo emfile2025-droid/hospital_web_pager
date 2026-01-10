@@ -12,6 +12,7 @@
         --c-blue: #0984e3; --c-red: #d63031; --c-purple: #6c5ce7;
         --c-orange: #e17055; --c-yellow: #fdcb6e; --c-green: #00b894;
         --c-grey: #636e72; --c-teal: #00cec9;
+        --c-ward: #8e44ad; /* 病棟移動用カラー */
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Yu Gothic", sans-serif; }
     body { height: 100vh; overflow: hidden; margin: 0; }
@@ -41,6 +42,7 @@
     .s-card.st-image_wait { background: var(--c-orange); color: white; border: none; }
     .s-card.st-long_wait { background: var(--c-yellow); color: #333; border: none; }
     .s-card.st-explain_15, .s-card.st-er_wait { background: var(--c-green); color: white; border: none; }
+    .s-card.st-ward { background: var(--c-ward); color: white; border: none; }
     .s-card.st-custom { background: var(--c-teal); color: #333; border: none; }
     .s-card.st-end { opacity: 0.4; }
 
@@ -81,6 +83,7 @@
     /* Preview Modes */
     .preview-body.mode-alert { background: #fff5f5; } .preview-body.mode-alert .prev-title { color: var(--c-red); }
     .preview-body.mode-custom { background: #e0f7fa; } .preview-body.mode-custom .prev-title { color: #006064; }
+    .preview-body.mode-ward { background: #f3e5f5; } .preview-body.mode-ward .prev-title { color: var(--c-ward); }
     .preview-body.mode-end { background: #eee; } .preview-body.mode-end .prev-icon { opacity: 0.3; }
 
     /* Input & Buttons */
@@ -98,6 +101,7 @@
     
     .bg-blue { background: var(--c-blue); } .bg-red { background: var(--c-red); } .bg-purple { background: var(--c-purple); }
     .bg-orange { background: var(--c-orange); } .bg-yellow { background: var(--c-yellow); color: #333; } .bg-green { background: var(--c-green); } .bg-grey { background: var(--c-grey); }
+    .bg-ward { background: var(--c-ward); }
 
     /* === PATIENT UI STYLES === */
     #patient-app { background: var(--bg-patient); flex-direction: column; align-items: center; justify-content: center; }
@@ -113,6 +117,7 @@
     /* Patient States */
     .mode-alert .p-body { background: #fff5f5; } .mode-alert .p-title { color: var(--c-red); }
     .mode-custom .p-body { background: #e0f7fa; } .mode-custom .p-title { color: #006064; }
+    .mode-ward .p-body { background: #f3e5f5; } .mode-ward .p-title { color: var(--c-ward); }
     .mode-end .p-body { background: #eee; justify-content: center; } .mode-end .p-icon { opacity: 0.2; } .mode-end .p-title { color: #aaa; }
     
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
@@ -186,10 +191,10 @@
                     <button class="btn bg-green" onclick="updateStatus('explain_15')"><i>🕐</i>あと15分で説明</button>
                     <button class="btn bg-green" onclick="updateStatus('er_wait')"><i>💺</i>待合室へ</button>
                 </div>
-                
-                <hr style="border:0; border-top:1px solid #555; margin:20px 0;">
-                
+
+                <p style="color:#aaa; font-size:0.8rem; margin-bottom:8px; border-left:3px solid #555; padding-left:8px;">移動・終了</p>
                 <div class="btn-group">
+                    <button class="btn bg-ward" onclick="updateStatus('ward')"><i>🛏️</i>まもなく病棟へ</button>
                     <button class="btn bg-grey" onclick="updateStatus('end')"><i>🔚</i>受付終了 (切断)</button>
                 </div>
             </div>
@@ -222,20 +227,20 @@
     // ★重要: ここにあなたのFirebase Configを貼り付けてください★
     // ==========================================================
     const firebaseConfig = {
-  apiKey: "AIzaSyBqjMZAaCD7h4E6QUyHsxzU4ghryCKhy2k",
-  authDomain: "hospital-family-pager.firebaseapp.com",
-  projectId: "hospital-family-pager",
-  storageBucket: "hospital-family-pager.firebasestorage.app",
-  messagingSenderId: "866783025354",
-  appId: "1:866783025354:web:a991e3844b31a0a2197c33",
-  measurementId: "G-51EFLJLJ18"
+      apiKey: "AIzaSyBqjMZAaCD7h4E6QUyHsxzU4ghryCKhy2k",
+      authDomain: "hospital-family-pager.firebaseapp.com",
+      projectId: "hospital-family-pager",
+      storageBucket: "hospital-family-pager.firebasestorage.app",
+      messagingSenderId: "866783025354",
+      appId: "1:866783025354:web:a991e3844b31a0a2197c33",
+      measurementId: "G-51EFLJLJ18"
     };
 
     // --- CONSTANTS ---
     const TOTAL_CARDS = 50;
     const STATUS_MAP = {
         'initial':    { icon: '🏥', title: '受付完了', desc: '順番にトリアージ・診察の準備を行っています。そのままお待ちください。', alert: false },
-        'exam_start': { icon: '👨‍⚕️', title: '診察中', desc: '医師による診察・処置を行っています。', alert: false },
+        'exam_start': { icon: '👨‍⚕️', title: '診察が始まりました', desc: '医師による診察が開始されました。待合室でお待ちください。', alert: false },
         'emergency':  { icon: '🚑', title: '緊急処置中', desc: '緊急の処置を行っています。対応にお時間を頂きます。', alert: true },
         'test_start': { icon: '💉', title: '検査実施中', desc: '血液検査や生理機能検査を行っています。', alert: false },
         'test_add':   { icon: '➕', title: '追加検査', desc: '詳細に調べるため、追加の検査を受け付けました。', alert: false },
@@ -244,6 +249,7 @@
         'long_wait':  { icon: '⏳', title: '待機中', desc: '現在、処置や検査にお時間を頂いています。しばらくお待ちください。', alert: false },
         'explain_15': { icon: '🕐', title: 'まもなく説明', desc: 'あと15分ほどで医師より説明を行う予定です。待合室でお待ちください。', alert: false },
         'er_wait':    { icon: '💺', title: '待合室へ', desc: '救急外来の待合室へ移動してお待ちください。', alert: false },
+        'ward':       { icon: '🛏️', title: 'まもなく病棟へ', desc: '入院（病棟移動）の準備が整いました。移動を開始します。', alert: false },
         'custom':     { icon: '📩', title: 'お知らせ', desc: '', alert: false },
         'end':        { icon: '✅', title: '終了', desc: '本日の受付通知は終了しました。', alert: false }
     };
@@ -385,6 +391,7 @@
         } else {
             const info = STATUS_MAP[data.status] || STATUS_MAP['initial'];
             if (info.alert) screen.classList.add('mode-alert');
+            if (data.status === 'ward') screen.classList.add('mode-ward'); // 病棟用スタイル
             icon = info.icon; title = info.title; desc = info.desc;
         }
         
@@ -505,6 +512,7 @@
         } else {
             const info = STATUS_MAP[data.status] || STATUS_MAP['initial'];
             if (info.alert) container.classList.add('mode-alert');
+            if (data.status === 'ward') container.classList.add('mode-ward'); // 病棟用スタイル適用
             icon = info.icon; title = info.title; desc = info.desc;
         }
         
