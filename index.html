@@ -27,14 +27,14 @@
     .staff-body { flex: 1; display: flex; overflow: hidden; }
     
     /* Sidebar Grid */
-    .card-list { width: 320px; background: #222; padding: 10px; overflow-y: auto; border-right: 1px solid #555; display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 60px; gap: 8px; flex-shrink: 0; }
-    .s-card { background: #444; border: 2px solid #555; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; color: #aaa; font-size: 1.2rem; user-select: none; position: relative; transition: all 0.2s; }
+    .card-list { width: 280px; background: #222; padding: 10px; overflow-y: auto; border-right: 1px solid #555; display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 55px; gap: 6px; flex-shrink: 0; }
+    .s-card { background: #444; border: 2px solid #555; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; color: #aaa; font-size: 1.1rem; user-select: none; position: relative; transition: all 0.2s; }
     .s-card:hover { filter: brightness(1.2); }
     .s-card.active { border-color: white; box-shadow: 0 0 0 2px white inset; z-index: 10; }
     
     /* Dynamic Status Colors */
     .s-card.st-initial { border: 2px solid var(--c-green); color: white; background: #2d3436; }
-    .s-card.st-initial::after { content: 'ONLINE'; position: absolute; bottom: 2px; font-size: 0.6rem; color: var(--c-green); }
+    .s-card.st-initial::after { content: 'ONLINE'; position: absolute; bottom: 2px; font-size: 0.5rem; color: var(--c-green); }
     .s-card.st-exam_start, .s-card.st-analyzing { background: var(--c-blue); color: white; border: none; }
     .s-card.st-emergency { background: var(--c-red); color: white; border: none; animation: pulse 1s infinite; }
     .s-card.st-test_start, .s-card.st-test_add { background: var(--c-purple); color: white; border: none; }
@@ -44,17 +44,39 @@
     .s-card.st-custom { background: var(--c-teal); color: #333; border: none; }
     .s-card.st-end { opacity: 0.4; }
 
-    /* Controls Area */
-    .controls { flex: 1; padding: 20px; overflow-y: auto; background: #2d3436; display: flex; flex-direction: column; }
+    /* Controls Area (Default Mobile View) */
+    .controls { flex: 1; padding: 20px; overflow-y: auto; background: #2d3436; display: flex; flex-direction: column; gap: 20px; }
+    .controls-left-panel, .controls-right-panel { display: flex; flex-direction: column; gap: 20px; }
+
+    /* ★★★ iPad / Desktop Layout Optimization ★★★ */
+    @media (min-width: 768px) {
+        .controls {
+            display: grid;
+            grid-template-columns: 380px 1fr; /* Left fixed width, Right takes rest */
+            grid-template-rows: 1fr;
+            gap: 30px;
+            align-items: start;
+            overflow-y: hidden; /* Hide main scrollbar */
+        }
+        .controls-right-panel {
+            overflow-y: auto; /* Scroll only buttons if needed */
+            max-height: 100%;
+            padding-right: 5px;
+        }
+        /* Slight adjustment for preview area on wider screens */
+        .preview-area { flex-direction: row; text-align: left; }
+        .preview-info { margin-bottom: 0; margin-right: 20px; }
+    }
     
     /* Live Preview Monitor */
-    .preview-area { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 20px; align-items: center; border: 1px solid #444; }
-    .preview-phone { width: 180px; height: 320px; background: white; border-radius: 18px; border: 6px solid #333; overflow: hidden; position: relative; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-    .preview-header { background: #2d3436; height: 30px; width: 100%; margin-bottom: 5px; flex-shrink: 0; }
-    .preview-body { flex: 1; padding: 10px; display: flex; flex-direction: column; align-items: center; text-align: center; color: #333; overflow: hidden; justify-content: center; }
-    .prev-icon { font-size: 3.5rem; margin-bottom: 10px; display: block; line-height: 1; }
-    .prev-title { font-size: 1rem; font-weight: 800; margin-bottom: 5px; line-height: 1.2; color: #2d3436; }
-    .prev-msg { font-size: 0.7rem; color: #636e72; background: #f1f2f6; padding: 8px; border-radius: 8px; width: 100%; line-height: 1.4; }
+    .preview-area { background: #1a1a1a; padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; border: 1px solid #444; text-align: center; }
+    .preview-info { flex: 1; margin-bottom: 15px; }
+    .preview-phone { width: 160px; height: 280px; background: white; border-radius: 16px; border: 5px solid #333; overflow: hidden; position: relative; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.3); margin: 0 auto; }
+    .preview-header { background: #2d3436; height: 25px; width: 100%; flex-shrink: 0; }
+    .preview-body { flex: 1; padding: 8px; display: flex; flex-direction: column; align-items: center; text-align: center; color: #333; overflow: hidden; justify-content: center; }
+    .prev-icon { font-size: 3rem; margin-bottom: 8px; display: block; line-height: 1; }
+    .prev-title { font-size: 0.9rem; font-weight: 800; margin-bottom: 4px; line-height: 1.2; color: #2d3436; }
+    .prev-msg { font-size: 0.65rem; color: #636e72; background: #f1f2f6; padding: 6px; border-radius: 6px; width: 100%; line-height: 1.4; }
     
     /* Preview Modes */
     .preview-body.mode-alert { background: #fff5f5; } .preview-body.mode-alert .prev-title { color: var(--c-red); }
@@ -62,17 +84,17 @@
     .preview-body.mode-end { background: #eee; } .preview-body.mode-end .prev-icon { opacity: 0.3; }
 
     /* Input & Buttons */
-    .custom-input-area { background: #3a4244; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #555; }
+    .custom-input-area { background: #3a4244; padding: 15px; border-radius: 8px; border: 1px solid #555; }
     .custom-input-row { display: flex; gap: 10px; margin-top: 10px; }
     input[type="text"] { flex: 1; padding: 12px; border-radius: 6px; border: none; font-size: 1rem; outline: none; }
-    .btn-send { background: var(--c-teal); color: #2d3436; font-weight: bold; cursor: pointer; padding: 0 25px; border: none; border-radius: 6px; transition: opacity 0.2s; }
+    .btn-send { background: var(--c-teal); color: #2d3436; font-weight: bold; cursor: pointer; padding: 0 20px; border: none; border-radius: 6px; transition: opacity 0.2s; white-space: nowrap; }
     .btn-send:hover { opacity: 0.8; }
     
-    .btn-group { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-bottom: 20px; }
-    .btn { padding: 14px; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 0.95rem; cursor: pointer; text-align: left; display: flex; align-items: center; transition: transform 0.1s, filter 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    .btn-group { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px; }
+    .btn { padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 0.9rem; cursor: pointer; text-align: left; display: flex; align-items: center; transition: transform 0.1s, filter 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
     .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
     .btn:active { transform: scale(0.98); }
-    .btn i { font-size: 1.4rem; margin-right: 12px; width: 30px; text-align: center; }
+    .btn i { font-size: 1.3rem; margin-right: 10px; width: 25px; text-align: center; }
     
     .bg-blue { background: var(--c-blue); } .bg-red { background: var(--c-red); } .bg-purple { background: var(--c-purple); }
     .bg-orange { background: var(--c-orange); } .bg-yellow { background: var(--c-yellow); color: #333; } .bg-green { background: var(--c-green); } .bg-grey { background: var(--c-grey); }
@@ -108,21 +130,22 @@
     </div>
     <div class="staff-body">
         <div class="card-list" id="s-grid">
-            <div style="padding:20px; color:#aaa;">Loading Cards...</div>
+            <div style="padding:20px; color:#aaa;">Loading...</div>
         </div>
         
         <div class="controls" id="s-controls" style="opacity:0.3; pointer-events:none;">
-            <div class="preview-area">
-                <div style="flex:1;">
-                    <div style="font-size:1.4rem; margin-bottom:10px; border-bottom:1px solid #555; padding-bottom:5px;">
-                        操作対象: <span id="s-target-num" style="color:var(--c-blue); font-weight:bold;">--</span>
+            
+            <div class="controls-left-panel">
+                <div class="preview-area">
+                    <div class="preview-info">
+                        <div style="font-size:1.2rem; margin-bottom:10px; border-bottom:1px solid #555; padding-bottom:5px;">
+                            対象: <span id="s-target-num" style="color:var(--c-blue); font-weight:bold;">--</span>
+                        </div>
+                        <p style="font-size:0.8rem; color:#aaa; line-height:1.4;">
+                            <span style="color:var(--c-green);">●</span> 患者画面プレビュー<br>
+                            (リアルタイム同期中)
+                        </p>
                     </div>
-                    <p style="font-size:0.85rem; color:#aaa; line-height:1.5;">
-                        <span style="color:var(--c-green);">●</span> リアルタイムプレビュー<br>
-                        患者様のスマホ画面を同期表示しています。
-                    </p>
-                </div>
-                <div style="text-align:center;">
                     <div class="preview-phone">
                         <div class="preview-header"></div>
                         <div class="preview-body" id="prev-screen">
@@ -132,17 +155,17 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="custom-input-area">
-                <div style="font-size:0.85rem; color:#ccc; font-weight:bold;">📩 自由記述メッセージ</div>
-                <div class="custom-input-row">
-                    <input type="text" id="custom-msg-input" placeholder="例: 1番診察室の前にお越しください">
-                    <button class="btn-send" onclick="sendCustomMessage()">送信</button>
+                <div class="custom-input-area">
+                    <div style="font-size:0.85rem; color:#ccc; font-weight:bold;">📩 自由記述メッセージ</div>
+                    <div class="custom-input-row">
+                        <input type="text" id="custom-msg-input" placeholder="例: 1番診察室の前へ">
+                        <button class="btn-send" onclick="sendCustomMessage()">送信</button>
+                    </div>
                 </div>
             </div>
             
-            <div style="flex:1;">
+            <div class="controls-right-panel">
                 <p style="color:#aaa; font-size:0.8rem; margin-bottom:8px; border-left:3px solid #555; padding-left:8px;">診察・処置状況</p>
                 <div class="btn-group">
                     <button class="btn bg-blue" onclick="updateStatus('exam_start')"><i>👨‍⚕️</i>診察開始</button>
@@ -199,12 +222,13 @@
     // ★重要: ここにあなたのFirebase Configを貼り付けてください★
     // ==========================================================
     const firebaseConfig = {
-        apiKey: "AIzaSyBqjMZAaCD7h4E6QUyHsxzU4ghryCKhy2k",
+  apiKey: "AIzaSyBqjMZAaCD7h4E6QUyHsxzU4ghryCKhy2k",
   authDomain: "hospital-family-pager.firebaseapp.com",
   projectId: "hospital-family-pager",
   storageBucket: "hospital-family-pager.firebasestorage.app",
   messagingSenderId: "866783025354",
-  appId: "1:866783025354:web:a991e3844b31a0a2197c33"
+  appId: "1:866783025354:web:a991e3844b31a0a2197c33",
+  measurementId: "G-51EFLJLJ18"
     };
 
     // --- CONSTANTS ---
@@ -273,7 +297,7 @@
     });
 
     // ==========================================
-    // 1. STAFF LOGIC (Secure)
+    // 1. STAFF LOGIC (Secure & Layout Optimized)
     // ==========================================
     function initStaffMode() {
         document.body.classList.add('mode-staff');
@@ -496,5 +520,4 @@
 
 </script>
 </body>
-
 </html>
