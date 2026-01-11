@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ER状況共有システム</title>
+<title>ER状況共有システム Ver.2026.01.11-v2</title>
 <style>
     /* --- DESIGN SYSTEM --- */
     :root {
@@ -34,8 +34,7 @@
     .s-card.active { border-color: white; box-shadow: 0 0 0 2px white inset; z-index: 10; }
     
     /* Status Colors */
-    /* [MODIFIED] Silent Ready State */
-    .s-card.st-initial { border: 2px solid var(--c-green); color: white; background: #2d3436; /* No Animation */ }
+    .s-card.st-initial { border: 2px solid var(--c-green); color: white; background: #2d3436; }
     .s-card.st-initial::after { content: 'READY'; position: absolute; bottom: 2px; font-size: 0.5rem; color: var(--c-green); }
     
     .s-card.st-exam_start, .s-card.st-analyzing { background: var(--c-blue); color: white; border: none; }
@@ -122,24 +121,53 @@
         box-shadow: 0 4px 10px rgba(0,0,0,0.3); animation: bounce 2s infinite;
         display: none;
     }
+    
+    /* Offline Banner */
+    .offline-banner {
+        display: none;
+        background: var(--c-red);
+        color: white;
+        text-align: center;
+        padding: 8px;
+        font-size: 0.85rem;
+        font-weight: bold;
+    }
+    body.is-offline .offline-banner { display: block; }
+    
+    /* Connection Status Indicator */
+    .conn-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        display: inline-block; margin-right: 5px;
+    }
+    .conn-dot.online { background: var(--c-green); }
+    .conn-dot.offline { background: var(--c-red); animation: pulse 1s infinite; }
+    
     @keyframes bounce { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-5px);} }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+
+    /* Clear Block Link - Hidden by default, requires specific action */
+    .clear-block-link { 
+        margin-top: 30px; font-size: 0.8rem; color: #0984e3; 
+        text-decoration: underline; cursor: pointer; opacity: 0.7; 
+    }
+    .clear-block-link:hover { opacity: 1; }
+
 </style>
 </head>
 <body>
+
+<div class="offline-banner">⚠️ オフライン - 接続を確認してください</div>
 
 <div id="staff-app">
     <div class="staff-header">
         <h2>🏥 ER Status Console</h2>
         <div style="font-size:0.8rem; color:#aaa; display:flex; gap:10px; align-items:center;">
             <span id="auth-display">Auth: Checking...</span>
-            <span id="sys-status">Server: Connecting...</span>
+            <span id="sys-status"><span class="conn-dot offline"></span>Connecting...</span>
         </div>
     </div>
     <div class="staff-body">
-        <div class="card-list" id="s-grid">
-            <div style="padding:20px; color:#aaa;">Loading...</div>
-        </div>
+        <div class="card-list" id="s-grid"></div>
         
         <div class="controls" id="s-controls" style="opacity:0.3; pointer-events:none;">
             <div class="controls-left-panel">
@@ -168,7 +196,7 @@
                     <div style="font-size:0.85rem; color:#ccc; font-weight:bold;">📩 自由記述メッセージ</div>
                     <div class="custom-input-row">
                         <input type="text" id="custom-msg-input" placeholder="例: 1番診察室の前へ">
-                        <button class="btn-send" onclick="sendCustomMessage()">送信</button>
+                        <button class="btn-send" onclick="App.sendCustomMessage()">送信</button>
                     </div>
                 </div>
             </div>
@@ -176,30 +204,30 @@
             <div class="controls-right-panel">
                 <p style="color:#aaa; font-size:0.8rem; margin-bottom:8px; border-left:3px solid #555; padding-left:8px;">診察・処置状況</p>
                 <div class="btn-group">
-                    <button class="btn bg-blue" onclick="updateStatus('exam_start')"><i>👨‍⚕️</i>診察開始</button>
-                    <button class="btn bg-red" onclick="updateStatus('emergency')"><i>🚑</i>緊急処置中</button>
+                    <button class="btn bg-blue" onclick="App.updateStatus('exam_start')"><i>👨‍⚕️</i>診察開始</button>
+                    <button class="btn bg-red" onclick="App.updateStatus('emergency')"><i>🚑</i>緊急処置中</button>
                 </div>
                 
                 <p style="color:#aaa; font-size:0.8rem; margin-bottom:8px; border-left:3px solid #555; padding-left:8px;">検査・分析</p>
                 <div class="btn-group">
-                    <button class="btn bg-purple" onclick="updateStatus('test_start')"><i>💉</i>検査開始</button>
-                    <button class="btn bg-purple" onclick="updateStatus('test_add')"><i>➕</i>追加検査</button>
-                    <button class="btn bg-orange" onclick="updateStatus('image_wait')"><i>☢️</i>画像呼出待ち</button>
-                    <button class="btn bg-blue" onclick="updateStatus('analyzing')"><i>🔬</i>結果分析中</button>
+                    <button class="btn bg-purple" onclick="App.updateStatus('test_start')"><i>💉</i>検査開始</button>
+                    <button class="btn bg-purple" onclick="App.updateStatus('test_add')"><i>➕</i>追加検査</button>
+                    <button class="btn bg-orange" onclick="App.updateStatus('image_wait')"><i>☢️</i>画像呼出待ち</button>
+                    <button class="btn bg-blue" onclick="App.updateStatus('analyzing')"><i>🔬</i>結果分析中</button>
                 </div>
                 
                 <p style="color:#aaa; font-size:0.8rem; margin-bottom:8px; border-left:3px solid #555; padding-left:8px;">案内・待機</p>
                 <div class="btn-group">
-                    <button class="btn bg-yellow" onclick="updateStatus('long_wait')"><i>⏳</i>時間かかります</button>
-                    <button class="btn bg-green" onclick="updateStatus('explain_15')"><i>🕐</i>あと15分で説明</button>
-                    <button class="btn bg-green" onclick="updateStatus('er_wait')"><i>💺</i>待合室へ</button>
+                    <button class="btn bg-yellow" onclick="App.updateStatus('long_wait')"><i>⏳</i>時間かかります</button>
+                    <button class="btn bg-green" onclick="App.updateStatus('explain_15')"><i>🕐</i>あと15分で説明</button>
+                    <button class="btn bg-green" onclick="App.updateStatus('er_wait')"><i>💺</i>待合室へ</button>
                 </div>
 
                 <p style="color:#aaa; font-size:0.8rem; margin-bottom:8px; border-left:3px solid #555; padding-left:8px;">移動・終了・リセット</p>
                 <div class="btn-group">
-                    <button class="btn bg-ward" onclick="updateStatus('ward')"><i>🛏️</i>まもなく病棟へ</button>
-                    <button class="btn bg-grey" onclick="updateStatus('end')"><i>🔚</i>受付終了 (切断)</button>
-                    <button class="btn bg-reset" onclick="updateStatus('initial')"><i>🔄</i>次の患者へ (新規)</button>
+                    <button class="btn bg-ward" onclick="App.updateStatus('ward')"><i>🛏️</i>まもなく病棟へ</button>
+                    <button class="btn bg-grey" onclick="App.updateStatus('end')"><i>🔚</i>受付終了 (切断)</button>
+                    <button class="btn bg-reset" onclick="App.updateStatus('initial')"><i>🔄</i>次の患者へ (新規)</button>
                 </div>
             </div>
         </div>
@@ -219,7 +247,7 @@
                     <div class="p-time">更新: --:--</div>
                 </div>
             </div>
-            <div id="sound-enable-overlay" onclick="unlockAudio()">🔊 通知音を有効にする</div>
+            <div id="sound-enable-overlay" onclick="App.unlockAudio()">🔊 通知音を有効にする</div>
         </div>
     </div>
 </div>
@@ -230,7 +258,7 @@
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     // ==========================================================
-    // ★重要: ここにあなたのFirebase Configを貼り付けてください★
+    // ★重要: Firebase Config
     // ==========================================================
     const firebaseConfig = {
       apiKey: "AIzaSyBqjMZAaCD7h4E6QUyHsxzU4ghryCKhy2k",
@@ -242,8 +270,12 @@
       measurementId: "G-51EFLJLJ18"
     };
 
-    // --- CONSTANTS ---
+    // ==========================================================
+    // CONSTANTS & STATUS DEFINITIONS
+    // ==========================================================
     const TOTAL_CARDS = 50;
+    const BLOCK_DURATION_MS = 12 * 60 * 60 * 1000; // 12時間でブロック自動解除
+    
     const STATUS_MAP = {
         'initial':    { icon: '🏥', title: '待機中', desc: 'この番号で接続しますか？<br>下のボタンを押して開始してください。', alert: false },
         'exam_start': { icon: '👨‍⚕️', title: '診察が始まりました', desc: '医師による診察が開始されました。待合室でお待ちください。', alert: false },
@@ -260,298 +292,659 @@
         'end':        { icon: '✅', title: '終了', desc: '本日の受付通知は終了しました。', alert: false }
     };
 
-    // --- AUDIO SYSTEM ---
-    let audioCtx = null;
-    let audioUnlocked = false;
-    let lastKnownStatus = null; 
-
-    window.unlockAudio = () => {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        audioCtx.resume().then(() => {
-            audioUnlocked = true;
-            document.getElementById('sound-enable-overlay').style.display = 'none';
-            playTone(880, 0.1, 0.05);
-        });
-    };
-
-    function playNotificationSound() {
-        if (!audioUnlocked || !audioCtx) return;
-        playTone(660, 0.2, 0);       
-        setTimeout(() => playTone(550, 0.4, 0), 200); 
-    }
-
-    function playTone(freq, duration, delay) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        osc.start(audioCtx.currentTime + delay);
-        osc.stop(audioCtx.currentTime + delay + duration);
-    }
-
-    // --- HELPERS ---
-    const generateSessionId = () => Math.random().toString(36).substring(2, 12);
-    const getNowStr = () => { const now = new Date(); return `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`; };
-
-    // --- APP STATE ---
-    let db, auth;
-    let cardCache = {};
-    window.selectedCardId = null;
-
-    // --- INITIALIZATION ---
-    try {
-        const app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        auth = getAuth(app);
-        
-        onSnapshot(collection(db, 'cards'), (snapshot) => {
-            document.getElementById('sys-status').innerText = "Server: Connected (Tokyo)";
-            snapshot.docChanges().forEach((change) => {
-                cardCache[change.doc.id] = change.doc.data();
-            });
-            if (document.body.classList.contains('mode-staff')) {
-                renderStaffGrid();
-                if (window.selectedCardId) renderPreview(window.selectedCardId);
-            } else if (document.body.classList.contains('mode-patient')) {
-                const myId = document.getElementById('p-num').innerText;
-                if (myId && myId !== '--') syncPatientView(myId);
-            }
-        });
-    } catch (e) { console.error("Init Error:", e); }
-
-    // --- MODE SWITCHER ---
-    window.addEventListener('DOMContentLoaded', () => {
-        const myId = new URLSearchParams(window.location.search).get('id');
-        if (myId) initPatientMode(myId); else initStaffMode();
+    // ==========================================================
+    // [NEW] ACCESS STATE ENUM - 状態を明確に分類
+    // ==========================================================
+    const AccessState = Object.freeze({
+        NOT_REGISTERED: 'NOT_REGISTERED',  // サーバーにデータなし
+        CAN_JOIN:       'CAN_JOIN',        // 接続可能（initialで未接続）
+        ACTIVE:         'ACTIVE',          // アクティブ接続中
+        EXPIRED:        'EXPIRED',         // セッション期限切れ（ゴースト）
+        BLOCKED:        'BLOCKED',         // ブロック中（再利用禁止）
+        ENDED:          'ENDED',           // 正常終了
+        NO_ACCESS:      'NO_ACCESS'        // アクセス権なし
     });
 
-    // ==========================================
-    // 1. STAFF LOGIC
-    // ==========================================
-    function initStaffMode() {
-        document.body.classList.add('mode-staff');
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('auth-display').innerText = `User: ${user.email}`;
-                renderStaffGrid();
-            } else { performStaffLogin(); }
-        });
-    }
-
-    function performStaffLogin() {
-        const email = prompt("【職員認証】メールアドレス:", "");
-        const password = prompt("【職員認証】パスワード:", "");
-        if (email && password) {
-            signInWithEmailAndPassword(auth, email, password)
-                .catch((e) => { alert("認証失敗: " + e.message); location.reload(); });
-        }
-    }
-
-    function renderStaffGrid() {
-        const grid = document.getElementById('s-grid');
-        grid.innerHTML = '';
-        for (let i = 1; i <= TOTAL_CARDS; i++) {
-            const btn = document.createElement('div');
-            btn.className = 's-card';
-            btn.innerText = i;
-            const data = cardCache[i];
-            if (data && data.status) {
-                if (data.status === 'initial') btn.classList.add('st-initial');
-                else if (data.status === 'end') btn.classList.add('st-end');
-                else btn.classList.add('st-' + data.status);
-            }
-            if (i == window.selectedCardId) btn.classList.add('active');
-            
-            // Interaction: Tap select, Long Press Reset
-            btn.onclick = () => selectStaffCard(i);
-            btn.oncontextmenu = (e) => { e.preventDefault(); handleStaffClick(i, true); };
-            let pressTimer;
-            btn.ontouchstart = () => { pressTimer = setTimeout(() => handleStaffClick(i, true), 800); };
-            btn.ontouchend = () => { clearTimeout(pressTimer); };
-            
-            grid.appendChild(btn);
-        }
-    }
-
-    function selectStaffCard(id) {
-        window.selectedCardId = id;
-        document.getElementById('s-target-num').innerText = id;
-        document.getElementById('custom-msg-input').value = '';
-        const controls = document.getElementById('s-controls');
-        controls.style.opacity = 1;
-        controls.style.pointerEvents = 'auto';
-        renderStaffGrid();
-        renderPreview(id);
-    }
-
-    async function handleStaffClick(id, isRightClick) {
-        if(isRightClick) {
-             if(!confirm(`No.${id} を終了・切断しますか？`)) return;
-             await performUpdate(id, 'end', null);
-        }
-    }
-
-    function renderPreview(id) {
-        const data = cardCache[id];
-        const screen = document.getElementById('prev-screen');
-        screen.className = 'preview-body';
+    // ==========================================================
+    // [NEW] STATE MACHINE - 許可される状態遷移を定義
+    // ==========================================================
+    const StateMachine = {
+        transitions: {
+            [AccessState.NOT_REGISTERED]: [AccessState.CAN_JOIN, AccessState.NOT_REGISTERED],
+            [AccessState.CAN_JOIN]:       [AccessState.ACTIVE, AccessState.CAN_JOIN, AccessState.NOT_REGISTERED],
+            [AccessState.ACTIVE]:         [AccessState.ACTIVE, AccessState.ENDED, AccessState.EXPIRED],
+            [AccessState.ENDED]:          [AccessState.CAN_JOIN, AccessState.BLOCKED],
+            [AccessState.EXPIRED]:        [AccessState.BLOCKED, AccessState.CAN_JOIN],
+            [AccessState.BLOCKED]:        [AccessState.CAN_JOIN],
+            [AccessState.NO_ACCESS]:      [AccessState.CAN_JOIN, AccessState.NO_ACCESS]
+        },
         
-        if (!data || !data.status) {
-            screen.innerHTML = `<span class="prev-icon">📷</span><div class="prev-title">未接続</div><div class="prev-msg">QR読取待機中</div><div class="prev-time">更新: --:--</div>`;
-            return;
+        canTransition(from, to) {
+            return this.transitions[from]?.includes(to) ?? false;
+        },
+        
+        validate(from, to) {
+            if (!this.canTransition(from, to)) {
+                console.warn(`[StateMachine] Invalid transition: ${from} → ${to}`);
+                return false;
+            }
+            return true;
         }
-        if (data.status === 'end') {
-            screen.classList.add('mode-end');
-            screen.innerHTML = `<span class="prev-icon">🔚</span><div class="prev-title">終了</div><div class="prev-msg">受付終了しました</div><div class="prev-time">更新: ${data.time}</div>`;
-            return;
-        }
-
-        let icon='', title='', desc='';
-        if (data.status === 'custom') {
-            screen.classList.add('mode-custom');
-            const def = STATUS_MAP['custom']; icon = def.icon; title = def.title; desc = data.message || '(メッセージなし)';
-        } else {
-            const info = STATUS_MAP[data.status] || STATUS_MAP['initial'];
-            if (info.alert) screen.classList.add('mode-alert');
-            if (data.status === 'ward') screen.classList.add('mode-ward'); 
-            icon = info.icon; title = info.title; desc = info.desc;
-        }
-        if(desc.length > 20) desc = desc.substring(0, 20) + '...';
-        screen.innerHTML = `<span class="prev-icon">${icon}</span><div class="prev-title">${title}</div><div class="prev-msg">${desc}</div><div class="prev-time">更新: ${data.time}</div>`;
-    }
-
-    // --- STAFF WRITER ---
-    window.updateStatus = (statusKey) => { if (window.selectedCardId) performUpdate(window.selectedCardId, statusKey, null); };
-    window.sendCustomMessage = () => {
-        if (!window.selectedCardId) return;
-        const text = document.getElementById('custom-msg-input').value.trim();
-        if (!text) return alert("メッセージを入力してください");
-        performUpdate(window.selectedCardId, 'custom', text);
     };
 
-    async function performUpdate(id, statusKey, customText) {
-        if (!db) return;
-        const currentData = cardCache[id] || {};
+    // ==========================================================
+    // AUDIO SYSTEM
+    // ==========================================================
+    const AudioSystem = {
+        ctx: null,
+        unlocked: false,
         
-        // Key Rotation on End or Reset
-        let currentSess = currentData.sessionId;
-        if (!currentSess || statusKey === 'end' || statusKey === 'initial') {
-            currentSess = generateSessionId();
-        }
-
-        const payload = { status: statusKey, time: getNowStr(), message: customText, sessionId: currentSess };
-        try {
-            await setDoc(doc(db, "cards", String(id)), payload, { merge: true });
-        } catch(e) { console.error(e); alert("通信エラー: ログイン状態を確認してください"); }
-    }
-
-    // ==========================================
-    // 2. PATIENT LOGIC (MANUAL CHECK-IN)
-    // ==========================================
-    let myHeldSessionId = null; 
-
-    function initPatientMode(id) {
-        document.body.classList.add('mode-patient');
-        document.getElementById('p-num').innerText = id;
+        unlock() {
+            if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            return this.ctx.resume().then(() => {
+                this.unlocked = true;
+                document.getElementById('sound-enable-overlay').style.display = 'none';
+                this.playTone(880, 0.1, 0.05);
+            });
+        },
         
-        const storedSess = sessionStorage.getItem('er_sess_' + id);
-        if (storedSess) myHeldSessionId = storedSess;
-
-        setTimeout(() => {
-           if(!audioUnlocked) document.getElementById('sound-enable-overlay').style.display = 'block';
-        }, 1000);
-
-        // No auto-write. Just sync.
-        syncPatientView(id);
-    }
-    
-    // Explicit manual join function
-    window.manualJoin = (id, sessId) => {
-        myHeldSessionId = sessId;
-        sessionStorage.setItem('er_sess_' + id, myHeldSessionId);
-        syncPatientView(id);
-    }
-
-    function syncPatientView(id) {
-        const data = cardCache[id];
-        const container = document.getElementById('patient-app');
-        const contentArea = document.getElementById('p-content-area');
-        const storageKey = 'er_sess_' + id;
+        playNotification() {
+            if (!this.unlocked || !this.ctx) return;
+            this.playTone(660, 0.2, 0);
+            setTimeout(() => this.playTone(550, 0.4, 0), 200);
+        },
         
-        container.className = ''; 
-        document.getElementById('p-view-body').className = 'p-body';
-
-        if (!data || !data.status) { 
-            contentArea.innerHTML = `<span class="p-icon">🤔</span><div class="p-title">未登録</div><div class="p-info-box"><div class="p-msg">職員の操作をお待ちください</div></div>`; 
-            return; 
+        playTone(freq, duration, delay) {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+            osc.start(this.ctx.currentTime + delay);
+            osc.stop(this.ctx.currentTime + delay + duration);
         }
+    };
 
-        // [SOUND]
-        if (lastKnownStatus && lastKnownStatus !== data.status && data.status !== 'end') {
-            playNotificationSound();
-        }
-        lastKnownStatus = data.status;
-
-        // [GHOST / END CHECK]
-        const serverKey = data.sessionId;
-        const isGhost = myHeldSessionId && serverKey && serverKey !== myHeldSessionId;
+    // ==========================================================
+    // [NEW] BLOCK MANAGER - 時間ベースのブロック管理
+    // ==========================================================
+    const BlockManager = {
+        _getKey(id) { return `er_block_${id}`; },
         
-        if (isGhost) {
-            sessionStorage.removeItem(storageKey); 
-            renderEndScreen(contentArea, container, data.time, true);
-            return;
+        setBlock(id, sessionId) {
+            const data = { sessionId, timestamp: Date.now() };
+            localStorage.setItem(this._getKey(id), JSON.stringify(data));
+        },
+        
+        getBlock(id) {
+            try {
+                const raw = localStorage.getItem(this._getKey(id));
+                if (!raw) return null;
+                const data = JSON.parse(raw);
+                
+                // 時間経過でブロック自動解除
+                if (Date.now() - data.timestamp > BLOCK_DURATION_MS) {
+                    this.clearBlock(id);
+                    return null;
+                }
+                return data;
+            } catch { return null; }
+        },
+        
+        isBlocked(id, serverSessionId) {
+            const block = this.getBlock(id);
+            return block && block.sessionId === serverSessionId;
+        },
+        
+        clearBlock(id) {
+            localStorage.removeItem(this._getKey(id));
         }
-        if (data.status === 'end') {
-            sessionStorage.removeItem(storageKey); 
-            renderEndScreen(contentArea, container, data.time, false);
-            return;
-        }
+    };
 
-        // [MANUAL CONNECT SCREEN]
-        // If server is 'initial' (Waiting) AND I have no key: Show Connect Button
-        if (!myHeldSessionId && data.status === 'initial') {
-            contentArea.innerHTML = `
+    // ==========================================================
+    // [NEW] SESSION MANAGER - セッション管理の単純化
+    // ==========================================================
+    const SessionManager = {
+        _getKey(id) { return `er_session_${id}`; },
+        
+        get(id) {
+            return sessionStorage.getItem(this._getKey(id));
+        },
+        
+        set(id, sessionId) {
+            sessionStorage.setItem(this._getKey(id), sessionId);
+        },
+        
+        clear(id) {
+            sessionStorage.removeItem(this._getKey(id));
+        },
+        
+        // [CORE] 統一されたアクセス状態判定
+        getAccessState(id, data) {
+            const myToken = this.get(id);
+            const serverToken = data?.sessionId;
+            
+            // 1. サーバーにデータなし
+            if (!data || !serverToken) {
+                return AccessState.NOT_REGISTERED;
+            }
+            
+            // 2. ブロック判定（トークンなし & ブロック登録済み）
+            if (!myToken && BlockManager.isBlocked(id, serverToken)) {
+                return AccessState.BLOCKED;
+            }
+            
+            // 3. 接続可能（initial状態で未接続）
+            if (!myToken && data.status === 'initial') {
+                return AccessState.CAN_JOIN;
+            }
+            
+            // 4. アクセス権なし（トークンなし）
+            if (!myToken) {
+                return AccessState.NO_ACCESS;
+            }
+            
+            // 5. セッション期限切れ（トークン不一致）
+            if (myToken !== serverToken) {
+                return AccessState.EXPIRED;
+            }
+            
+            // 6. 終了状態
+            if (data.status === 'end') {
+                return AccessState.ENDED;
+            }
+            
+            // 7. アクティブ
+            return AccessState.ACTIVE;
+        }
+    };
+
+    // ==========================================================
+    // UTILITY FUNCTIONS
+    // ==========================================================
+    const Utils = {
+        generateSessionId: () => Math.random().toString(36).substring(2, 12),
+        getNowStr: () => {
+            const now = new Date();
+            return `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+        },
+        truncate: (str, len) => str.length > len ? str.substring(0, len) + '...' : str
+    };
+
+    // ==========================================================
+    // MAIN APPLICATION
+    // ==========================================================
+    const App = {
+        db: null,
+        auth: null,
+        cardCache: {},
+        selectedCardId: null,
+        patientId: null,
+        lastKnownStatus: null,
+        currentAccessState: null,
+        isOnline: true,
+        
+        // --- INITIALIZATION ---
+        init() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                this.db = getFirestore(app);
+                this.auth = getAuth(app);
+                
+                // オンライン/オフライン監視
+                this.setupConnectivityMonitor();
+                
+                // Firebase リスナー
+                this.setupFirebaseListener();
+                
+                // モード判定
+                const myId = new URLSearchParams(window.location.search).get('id');
+                if (myId) {
+                    this.initPatientMode(myId);
+                } else {
+                    this.initStaffMode();
+                }
+            } catch (e) {
+                console.error("Init Error:", e);
+                this.showOfflineState();
+            }
+        },
+        
+        setupConnectivityMonitor() {
+            window.addEventListener('online', () => this.setOnlineState(true));
+            window.addEventListener('offline', () => this.setOnlineState(false));
+        },
+        
+        setOnlineState(online) {
+            this.isOnline = online;
+            document.body.classList.toggle('is-offline', !online);
+            const dot = document.querySelector('.conn-dot');
+            if (dot) {
+                dot.classList.toggle('online', online);
+                dot.classList.toggle('offline', !online);
+            }
+        },
+        
+        showOfflineState() {
+            this.setOnlineState(false);
+        },
+        
+        setupFirebaseListener() {
+            onSnapshot(collection(this.db, 'cards'), (snapshot) => {
+                this.setOnlineState(true);
+                document.getElementById('sys-status').innerHTML = 
+                    '<span class="conn-dot online"></span>Connected (Tokyo)';
+                
+                // 差分更新のみ処理
+                snapshot.docChanges().forEach((change) => {
+                    const id = change.doc.id;
+                    const oldData = this.cardCache[id];
+                    const newData = change.doc.data();
+                    this.cardCache[id] = newData;
+                    
+                    // [DIFF RENDER] 変更があったカードのみ更新
+                    if (document.body.classList.contains('mode-staff')) {
+                        this.updateSingleCard(id, newData);
+                        if (id == this.selectedCardId) {
+                            this.renderPreview(id);
+                        }
+                    }
+                });
+                
+                // 患者モード
+                if (document.body.classList.contains('mode-patient') && this.patientId) {
+                    this.syncPatientView(this.patientId);
+                }
+            }, (error) => {
+                console.error("Firebase Error:", error);
+                this.showOfflineState();
+            });
+        },
+        
+        // ===========================================
+        // STAFF MODE
+        // ===========================================
+        initStaffMode() {
+            document.body.classList.add('mode-staff');
+            
+            // 初期グリッド生成（1回のみ）
+            this.buildStaffGrid();
+            
+            onAuthStateChanged(this.auth, (user) => {
+                if (user) {
+                    document.getElementById('auth-display').innerText = `User: ${user.email}`;
+                } else {
+                    this.performStaffLogin();
+                }
+            });
+        },
+        
+        performStaffLogin() {
+            const email = prompt("【職員認証】メールアドレス:", "");
+            const password = prompt("【職員認証】パスワード:", "");
+            if (email && password) {
+                signInWithEmailAndPassword(this.auth, email, password)
+                    .catch((e) => { alert("認証失敗: " + e.message); location.reload(); });
+            }
+        },
+        
+        // [NEW] 初期グリッド構築（DOM生成は1回のみ）
+        buildStaffGrid() {
+            const grid = document.getElementById('s-grid');
+            grid.innerHTML = '';
+            
+            for (let i = 1; i <= TOTAL_CARDS; i++) {
+                const btn = document.createElement('div');
+                btn.className = 's-card';
+                btn.dataset.cardId = i;
+                btn.innerText = i;
+                
+                btn.onclick = () => this.selectStaffCard(i);
+                btn.oncontextmenu = (e) => { e.preventDefault(); this.handleStaffRightClick(i); };
+                
+                // 長押し対応
+                let pressTimer;
+                btn.ontouchstart = () => { pressTimer = setTimeout(() => this.handleStaffRightClick(i), 800); };
+                btn.ontouchend = () => { clearTimeout(pressTimer); };
+                
+                grid.appendChild(btn);
+            }
+        },
+        
+        // [NEW] 差分レンダリング - 単一カード更新
+        updateSingleCard(id, data) {
+            const card = document.querySelector(`[data-card-id="${id}"]`);
+            if (!card) return;
+            
+            // クラスをリセット
+            card.className = 's-card';
+            card.dataset.cardId = id;
+            
+            // ステータス適用
+            if (data && data.status) {
+                card.classList.add('st-' + data.status);
+            }
+            
+            // 選択状態
+            if (id == this.selectedCardId) {
+                card.classList.add('active');
+            }
+        },
+        
+        selectStaffCard(id) {
+            const prevId = this.selectedCardId;
+            this.selectedCardId = id;
+            
+            document.getElementById('s-target-num').innerText = id;
+            document.getElementById('custom-msg-input').value = '';
+            
+            const controls = document.getElementById('s-controls');
+            controls.style.opacity = 1;
+            controls.style.pointerEvents = 'auto';
+            
+            // 差分更新：前の選択と新しい選択のみ
+            if (prevId) this.updateSingleCard(prevId, this.cardCache[prevId]);
+            this.updateSingleCard(id, this.cardCache[id]);
+            
+            this.renderPreview(id);
+        },
+        
+        async handleStaffRightClick(id) {
+            if (!confirm(`No.${id} を終了・切断しますか？`)) return;
+            await this.performUpdate(id, 'end', null);
+        },
+        
+        renderPreview(id) {
+            const data = this.cardCache[id];
+            const screen = document.getElementById('prev-screen');
+            screen.className = 'preview-body';
+            
+            if (!data || !data.status) {
+                screen.innerHTML = `
+                    <span class="prev-icon">📷</span>
+                    <div class="prev-title">未接続</div>
+                    <div class="prev-msg">QR読取待機中</div>
+                    <div class="prev-time">更新: --:--</div>
+                `;
+                return;
+            }
+            
+            if (data.status === 'end') {
+                screen.classList.add('mode-end');
+                screen.innerHTML = `
+                    <span class="prev-icon">🔚</span>
+                    <div class="prev-title">終了</div>
+                    <div class="prev-msg">受付終了しました</div>
+                    <div class="prev-time">更新: ${data.time}</div>
+                `;
+                return;
+            }
+
+            let icon = '', title = '', desc = '';
+            
+            if (data.status === 'custom') {
+                screen.classList.add('mode-custom');
+                icon = STATUS_MAP['custom'].icon;
+                title = STATUS_MAP['custom'].title;
+                desc = data.message || '(メッセージなし)';
+            } else {
+                const info = STATUS_MAP[data.status] || STATUS_MAP['initial'];
+                if (info.alert) screen.classList.add('mode-alert');
+                if (data.status === 'ward') screen.classList.add('mode-ward');
+                icon = info.icon;
+                title = info.title;
+                desc = info.desc;
+            }
+            
+            desc = Utils.truncate(desc, 20);
+            
+            screen.innerHTML = `
+                <span class="prev-icon">${icon}</span>
+                <div class="prev-title">${title}</div>
+                <div class="prev-msg">${desc}</div>
+                <div class="prev-time">更新: ${data.time}</div>
+            `;
+        },
+        
+        // --- STAFF WRITER ---
+        updateStatus(statusKey) {
+            if (this.selectedCardId) {
+                this.performUpdate(this.selectedCardId, statusKey, null);
+            }
+        },
+        
+        sendCustomMessage() {
+            if (!this.selectedCardId) return;
+            const text = document.getElementById('custom-msg-input').value.trim();
+            if (!text) return alert("メッセージを入力してください");
+            this.performUpdate(this.selectedCardId, 'custom', text);
+        },
+        
+        async performUpdate(id, statusKey, customText) {
+            if (!this.db) return;
+            
+            const currentData = this.cardCache[id] || {};
+            let currentSess = currentData.sessionId;
+            
+            // 終了・リセット時は新しいセッションID
+            if (!currentSess || statusKey === 'end' || statusKey === 'initial') {
+                currentSess = Utils.generateSessionId();
+            }
+
+            const payload = {
+                status: statusKey,
+                time: Utils.getNowStr(),
+                message: customText,
+                sessionId: currentSess
+            };
+            
+            try {
+                await setDoc(doc(this.db, "cards", String(id)), payload, { merge: true });
+            } catch(e) {
+                console.error(e);
+                alert("通信エラー: ログイン状態を確認してください");
+            }
+        },
+        
+        // ===========================================
+        // PATIENT MODE
+        // ===========================================
+        initPatientMode(id) {
+            document.body.classList.add('mode-patient');
+            this.patientId = id;
+            document.getElementById('p-num').innerText = id;
+            
+            // 音声有効化ボタン表示
+            setTimeout(() => {
+                if (!AudioSystem.unlocked) {
+                    document.getElementById('sound-enable-overlay').style.display = 'block';
+                }
+            }, 1000);
+            
+            this.syncPatientView(id);
+        },
+        
+        // [NEW] 統一されたPatient View同期
+        syncPatientView(id) {
+            const data = this.cardCache[id];
+            const container = document.getElementById('patient-app');
+            const contentArea = document.getElementById('p-content-area');
+            
+            // リセット
+            container.className = '';
+            document.getElementById('p-view-body').className = 'p-body';
+            
+            // [CORE] アクセス状態を判定
+            const accessState = SessionManager.getAccessState(id, data);
+            
+            // 状態遷移の検証
+            if (this.currentAccessState && !StateMachine.validate(this.currentAccessState, accessState)) {
+                console.warn(`Unexpected state transition, forcing to: ${accessState}`);
+            }
+            this.currentAccessState = accessState;
+            
+            // [SOUND] ステータス変更時に通知音
+            if (data && this.lastKnownStatus && 
+                this.lastKnownStatus !== data.status && 
+                data.status !== 'end' &&
+                accessState === AccessState.ACTIVE) {
+                AudioSystem.playNotification();
+            }
+            this.lastKnownStatus = data?.status;
+            
+            // 状態に応じたレンダリング
+            switch (accessState) {
+                case AccessState.NOT_REGISTERED:
+                    this.renderPatientScreen(contentArea, container, {
+                        icon: '🤔', title: '未登録',
+                        msg: '職員の操作をお待ちください'
+                    });
+                    break;
+                    
+                case AccessState.CAN_JOIN:
+                    this.renderJoinScreen(contentArea, id, data.sessionId);
+                    break;
+                    
+                case AccessState.ACTIVE:
+                    this.renderActiveScreen(contentArea, container, data);
+                    break;
+                    
+                case AccessState.EXPIRED:
+                    // ブロック登録 & セッションクリア
+                    SessionManager.clear(id);
+                    BlockManager.setBlock(id, data.sessionId);
+                    this.renderEndScreen(contentArea, container, data.time, 
+                        '新しい診察が開始されたため切断されました', true);
+                    break;
+                    
+                case AccessState.ENDED:
+                    SessionManager.clear(id);
+                    BlockManager.setBlock(id, data.sessionId);
+                    this.renderEndScreen(contentArea, container, data.time,
+                        '本日の受付通知は終了しました', true);
+                    break;
+                    
+                case AccessState.BLOCKED:
+                    this.renderEndScreen(contentArea, container, data?.time,
+                        'この番号の案内は終了しました。<br>新しい番号をお持ちの方は、<br>QRコードを読み取ってください。', true);
+                    break;
+                    
+                case AccessState.NO_ACCESS:
+                    this.renderPatientScreen(contentArea, container, {
+                        icon: '🔒', title: '利用不可',
+                        msg: '別の端末で使用中か、<br>受付がリセットされました。'
+                    });
+                    break;
+            }
+        },
+        
+        renderPatientScreen(el, container, { icon, title, msg, time }) {
+            el.innerHTML = `
+                <span class="p-icon">${icon}</span>
+                <div class="p-title">${title}</div>
+                <div class="p-info-box">
+                    <div class="p-msg">${msg}</div>
+                    ${time ? `<div class="p-time">更新: ${time}</div>` : ''}
+                </div>
+            `;
+        },
+        
+        renderJoinScreen(el, id, sessionId) {
+            el.innerHTML = `
                 <span class="p-icon">📲</span>
                 <div class="p-title">接続確認</div>
-                <div class="p-msg" style="background:none;">診察券番号 ${id}番 で<br>受付状況を確認しますか？</div>
-                <button class="btn-connect" onclick="manualJoin(${id}, '${data.sessionId}')">接続する</button>
+                <div class="p-msg" style="background:none;">
+                    診察券番号 ${id}番 で<br>受付状況を確認しますか？
+                </div>
+                <button class="btn-connect" onclick="App.manualJoin(${id}, '${sessionId}')">
+                    接続する
+                </button>
             `;
-            return;
-        }
-
-        // [NO KEY] Wait (Someone else took it, or I am late)
-        if (!myHeldSessionId) {
-             contentArea.innerHTML = `<span class="p-icon">🔒</span><div class="p-title">利用不可</div><div class="p-info-box"><div class="p-msg">別の端末で使用中か、<br>受付がリセットされました。</div></div>`;
-             return;
-        }
-
-        // [ACTIVE]
-        let icon='', title='', desc='';
-        if (data.status === 'custom') {
-            container.classList.add('mode-custom');
-            const def = STATUS_MAP['custom']; icon = def.icon; title = def.title; desc = data.message || '(メッセージなし)';
-        } else {
-            const info = STATUS_MAP[data.status] || STATUS_MAP['initial'];
-            // iPad shows 'Waiting', but Patient sees 'Reception Complete' once connected
-            if (data.status === 'initial') {
-                 // Override for Connected Patient
-                 icon = '🏥'; title = '受付完了'; desc = '順番にトリアージ・診察の準備を行っています。そのままお待ちください。';
-            } else {
-                 if (info.alert) container.classList.add('mode-alert');
-                 if (data.status === 'ward') container.classList.add('mode-ward'); 
-                 icon = info.icon; title = info.title; desc = info.desc;
-            }
-        }
+        },
         
-        contentArea.innerHTML = `<span class="p-icon">${icon}</span><div class="p-title">${title}</div><div class="p-info-box"><div class="p-msg">${desc}</div><div class="p-time">更新: ${data.time}</div></div>`;
-    }
+        renderActiveScreen(el, container, data) {
+            let icon = '', title = '', desc = '';
+            
+            if (data.status === 'custom') {
+                container.classList.add('mode-custom');
+                icon = STATUS_MAP['custom'].icon;
+                title = STATUS_MAP['custom'].title;
+                desc = data.message || '(メッセージなし)';
+            } else if (data.status === 'initial') {
+                // 接続直後の初期状態
+                icon = '🏥';
+                title = '受付完了';
+                desc = '順番にトリアージ・診察の準備を行っています。そのままお待ちください。';
+            } else {
+                const info = STATUS_MAP[data.status] || STATUS_MAP['initial'];
+                if (info.alert) container.classList.add('mode-alert');
+                if (data.status === 'ward') container.classList.add('mode-ward');
+                icon = info.icon;
+                title = info.title;
+                desc = info.desc;
+            }
+            
+            el.innerHTML = `
+                <span class="p-icon">${icon}</span>
+                <div class="p-title">${title}</div>
+                <div class="p-info-box">
+                    <div class="p-msg">${desc}</div>
+                    <div class="p-time">更新: ${data.time}</div>
+                </div>
+            `;
+        },
+        
+        renderEndScreen(el, container, time, message, showUnblock = false) {
+            container.classList.add('mode-end');
+            
+            const unblockHtml = showUnblock ? `
+                <div class="clear-block-link" onclick="App.requestUnblock(${this.patientId})">
+                    再来院の方: 新しい診察で利用する場合はこちら
+                </div>
+            ` : '';
+            
+            el.innerHTML = `
+                <span class="p-icon">🔚</span>
+                <div class="p-title">終了</div>
+                <div class="p-info-box">
+                    <div class="p-msg" style="font-weight:bold;">${message}</div>
+                    <div class="p-time">最終更新: ${time || '--:--'}</div>
+                </div>
+                ${unblockHtml}
+            `;
+        },
+        
+        manualJoin(id, sessionId) {
+            SessionManager.set(id, sessionId);
+            BlockManager.clearBlock(id); // ブロック解除
+            this.syncPatientView(id);
+        },
+        
+        // [SECURITY] ブロック解除リクエスト（確認付き）
+        requestUnblock(id) {
+            const confirmed = confirm(
+                '新しい診察を開始しますか？\n\n' +
+                '※同じ番号で別の患者様が使用中の場合、\n' +
+                '　正しく表示されない可能性があります。'
+            );
+            if (confirmed) {
+                BlockManager.clearBlock(id);
+                SessionManager.clear(id);
+                location.reload();
+            }
+        },
+        
+        unlockAudio() {
+            AudioSystem.unlock();
+        }
+    };
 
-    function renderEndScreen(el, container, time, isGhost) {
-        container.classList.add('mode-end');
-        el.innerHTML = `<span class="p-icon">🔚</span><div class="p-title">終了</div><div class="p-info-box"><div class="p-msg" style="font-weight:bold;">${isGhost ? '接続が切断されました<br>(新しい診察が開始されています)' : '本日の受付通知は終了しました'}</div><div class="p-time">最終更新: ${time}</div></div>`;
-    }
+    // グローバル公開（onclick用）
+    window.App = App;
+    
+    // 起動
+    window.addEventListener('DOMContentLoaded', () => App.init());
 
 </script>
 </body>
