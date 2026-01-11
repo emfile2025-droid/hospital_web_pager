@@ -145,13 +145,6 @@
     @keyframes bounce { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-5px);} }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
 
-    /* Clear Block Link - Hidden by default, requires specific action */
-    .clear-block-link { 
-        margin-top: 30px; font-size: 0.8rem; color: #0984e3; 
-        text-decoration: underline; cursor: pointer; opacity: 0.7; 
-    }
-    .clear-block-link:hover { opacity: 1; }
-
 </style>
 </head>
 <body>
@@ -274,7 +267,7 @@
     // CONSTANTS & STATUS DEFINITIONS
     // ==========================================================
     const TOTAL_CARDS = 50;
-    const BLOCK_DURATION_MS = 12 * 60 * 60 * 1000; // 12時間でブロック自動解除
+    const BLOCK_DURATION_MS = Infinity; // 無期限ブロック（再来院は手動解除）
     
     const STATUS_MAP = {
         'initial':    { icon: '🏥', title: '待機中', desc: 'この番号で接続しますか？<br>下のボタンを押して開始してください。', alert: false },
@@ -367,38 +360,37 @@
     };
 
     // ==========================================================
-    // [NEW] BLOCK MANAGER - 時間ベースのブロック管理
+    // [NEW] BLOCK MANAGER - 接続履歴ベースのブロック管理
+    // 「この端末がこの番号に接続したことがある」で判定
     // ==========================================================
     const BlockManager = {
-        _getKey(id) { return `er_block_${id}`; },
+        _getHistoryKey(id) { return `er_history_${id}`; },
         
-        setBlock(id, sessionId) {
-            const data = { sessionId, timestamp: Date.now() };
-            localStorage.setItem(this._getKey(id), JSON.stringify(data));
+        // 接続時に履歴を記録
+        recordConnection(id) {
+            const data = { connectedAt: Date.now() };
+            localStorage.setItem(this._getHistoryKey(id), JSON.stringify(data));
         },
         
-        getBlock(id) {
+        // この端末がこの番号に接続したことがあるか
+        hasConnectedBefore(id) {
             try {
-                const raw = localStorage.getItem(this._getKey(id));
-                if (!raw) return null;
-                const data = JSON.parse(raw);
+                const raw = localStorage.getItem(this._getHistoryKey(id));
+                if (!raw) return false;
                 
-                // 時間経過でブロック自動解除
-                if (Date.now() - data.timestamp > BLOCK_DURATION_MS) {
-                    this.clearBlock(id);
-                    return null;
+                const data = JSON.parse(raw);
+                // 時間経過で自動解除（24時間）
+                if (Date.now() - data.connectedAt > BLOCK_DURATION_MS) {
+                    this.clearHistory(id);
+                    return false;
                 }
-                return data;
-            } catch { return null; }
+                return true;
+            } catch { return false; }
         },
         
-        isBlocked(id, serverSessionId) {
-            const block = this.getBlock(id);
-            return block && block.sessionId === serverSessionId;
-        },
-        
-        clearBlock(id) {
-            localStorage.removeItem(this._getKey(id));
+        // 履歴をクリア（再来院時のみ使用）
+        clearHistory(id) {
+            localStorage.removeItem(this._getHistoryKey(id));
         }
     };
 
@@ -414,6 +406,8 @@
         
         set(id, sessionId) {
             sessionStorage.setItem(this._getKey(id), sessionId);
+            // 接続時に履歴も記録
+            BlockManager.recordConnection(id);
         },
         
         clear(id) {
@@ -430,33 +424,33 @@
                 return AccessState.NOT_REGISTERED;
             }
             
-            // 2. ブロック判定（トークンなし & ブロック登録済み）
-            if (!myToken && BlockManager.isBlocked(id, serverToken)) {
-                return AccessState.BLOCKED;
-            }
-            
-            // 3. 接続可能（initial状態で未接続）
-            if (!myToken && data.status === 'initial') {
-                return AccessState.CAN_JOIN;
-            }
-            
-            // 4. アクセス権なし（トークンなし）
-            if (!myToken) {
-                return AccessState.NO_ACCESS;
-            }
-            
-            // 5. セッション期限切れ（トークン不一致）
-            if (myToken !== serverToken) {
+            // 2. アクティブなトークンを持っている場合
+            if (myToken) {
+                // トークン一致 → アクティブまたは終了
+                if (myToken === serverToken) {
+                    if (data.status === 'end') {
+                        return AccessState.ENDED;
+                    }
+                    return AccessState.ACTIVE;
+                }
+                // トークン不一致 → セッション期限切れ
                 return AccessState.EXPIRED;
             }
             
-            // 6. 終了状態
-            if (data.status === 'end') {
-                return AccessState.ENDED;
+            // 3. トークンなし（未接続または過去に接続済み）
+            
+            // この端末が過去にこの番号に接続したことがある → ブロック
+            if (BlockManager.hasConnectedBefore(id)) {
+                return AccessState.BLOCKED;
             }
             
-            // 7. アクティブ
-            return AccessState.ACTIVE;
+            // 接続可能（initial状態で未接続）
+            if (data.status === 'initial') {
+                return AccessState.CAN_JOIN;
+            }
+            
+            // それ以外 → アクセス権なし
+            return AccessState.NO_ACCESS;
         }
     };
 
@@ -814,23 +808,21 @@
                     break;
                     
                 case AccessState.EXPIRED:
-                    // ブロック登録 & セッションクリア
+                    // セッションクリア（履歴は接続時に記録済み）
                     SessionManager.clear(id);
-                    BlockManager.setBlock(id, data.sessionId);
                     this.renderEndScreen(contentArea, container, data.time, 
-                        '新しい診察が開始されたため切断されました', true);
+                        '新しい診察が開始されたため切断されました');
                     break;
                     
                 case AccessState.ENDED:
                     SessionManager.clear(id);
-                    BlockManager.setBlock(id, data.sessionId);
                     this.renderEndScreen(contentArea, container, data.time,
-                        '本日の受付通知は終了しました', true);
+                        '本日の受付通知は終了しました');
                     break;
                     
                 case AccessState.BLOCKED:
                     this.renderEndScreen(contentArea, container, data?.time,
-                        'この番号の案内は終了しました。<br>新しい番号をお持ちの方は、<br>QRコードを読み取ってください。', true);
+                        'この番号は以前ご利用済みのため<br>表示できません。<br>お手数ですが、受付で別の番号を<br>お申し付けください。');
                     break;
                     
                 case AccessState.NO_ACCESS:
@@ -898,14 +890,8 @@
             `;
         },
         
-        renderEndScreen(el, container, time, message, showUnblock = false) {
+        renderEndScreen(el, container, time, message) {
             container.classList.add('mode-end');
-            
-            const unblockHtml = showUnblock ? `
-                <div class="clear-block-link" onclick="App.requestUnblock(${this.patientId})">
-                    再来院の方: 新しい診察で利用する場合はこちら
-                </div>
-            ` : '';
             
             el.innerHTML = `
                 <span class="p-icon">🔚</span>
@@ -914,28 +900,14 @@
                     <div class="p-msg" style="font-weight:bold;">${message}</div>
                     <div class="p-time">最終更新: ${time || '--:--'}</div>
                 </div>
-                ${unblockHtml}
             `;
         },
         
         manualJoin(id, sessionId) {
+            // 履歴クリア（再来院時のみ）してから接続
+            BlockManager.clearHistory(id);
             SessionManager.set(id, sessionId);
-            BlockManager.clearBlock(id); // ブロック解除
             this.syncPatientView(id);
-        },
-        
-        // [SECURITY] ブロック解除リクエスト（確認付き）
-        requestUnblock(id) {
-            const confirmed = confirm(
-                '新しい診察を開始しますか？\n\n' +
-                '※同じ番号で別の患者様が使用中の場合、\n' +
-                '　正しく表示されない可能性があります。'
-            );
-            if (confirmed) {
-                BlockManager.clearBlock(id);
-                SessionManager.clear(id);
-                location.reload();
-            }
         },
         
         unlockAudio() {
