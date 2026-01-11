@@ -27,11 +27,13 @@
     .staff-header { padding: 15px; background: #000; border-bottom: 1px solid #555; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
     .staff-body { flex: 1; display: flex; overflow: hidden; }
     
+    /* Card Grid */
     .card-list { width: 280px; background: #222; padding: 10px; overflow-y: auto; border-right: 1px solid #555; display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 55px; gap: 6px; flex-shrink: 0; }
     .s-card { background: #444; border: 2px solid #555; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; color: #aaa; font-size: 1.1rem; user-select: none; position: relative; transition: all 0.2s; }
     .s-card:hover { filter: brightness(1.2); }
     .s-card.active { border-color: white; box-shadow: 0 0 0 2px white inset; z-index: 10; }
     
+    /* Status Colors */
     .s-card.st-initial { border: 2px solid var(--c-green); color: white; background: #2d3436; }
     .s-card.st-initial::after { content: 'ONLINE'; position: absolute; bottom: 2px; font-size: 0.5rem; color: var(--c-green); }
     .s-card.st-exam_start, .s-card.st-analyzing { background: var(--c-blue); color: white; border: none; }
@@ -44,6 +46,7 @@
     .s-card.st-custom { background: var(--c-teal); color: #333; border: none; }
     .s-card.st-end { opacity: 0.4; }
 
+    /* Controls */
     .controls { flex: 1; padding: 20px; overflow-y: auto; background: #2d3436; display: flex; flex-direction: column; gap: 20px; }
     @media (min-width: 768px) {
         .controls { display: grid; grid-template-columns: 380px 1fr; grid-template-rows: 1fr; gap: 30px; align-items: start; overflow-y: hidden; }
@@ -81,6 +84,7 @@
     .bg-blue { background: var(--c-blue); } .bg-red { background: var(--c-red); } .bg-purple { background: var(--c-purple); }
     .bg-orange { background: var(--c-orange); } .bg-yellow { background: var(--c-yellow); color: #333; } .bg-green { background: var(--c-green); } .bg-grey { background: var(--c-grey); }
     .bg-ward { background: var(--c-ward); }
+    .bg-reset { background: #34495e; border: 2px solid #555; }
 
     /* === PATIENT UI === */
     #patient-app { background: var(--bg-patient); flex-direction: column; align-items: center; justify-content: center; }
@@ -106,11 +110,9 @@
         background: var(--c-blue); color: white; padding: 10px 20px;
         border-radius: 30px; font-weight: bold; cursor: pointer;
         box-shadow: 0 4px 10px rgba(0,0,0,0.3); animation: bounce 2s infinite;
-        display: none; /* JS controls this */
+        display: none;
     }
     @keyframes bounce { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-5px);} }
-
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 </style>
 </head>
 <body>
@@ -182,10 +184,11 @@
                     <button class="btn bg-green" onclick="updateStatus('er_wait')"><i>💺</i>待合室へ</button>
                 </div>
 
-                <p style="color:#aaa; font-size:0.8rem; margin-bottom:8px; border-left:3px solid #555; padding-left:8px;">移動・終了</p>
+                <p style="color:#aaa; font-size:0.8rem; margin-bottom:8px; border-left:3px solid #555; padding-left:8px;">移動・終了・リセット</p>
                 <div class="btn-group">
                     <button class="btn bg-ward" onclick="updateStatus('ward')"><i>🛏️</i>まもなく病棟へ</button>
                     <button class="btn bg-grey" onclick="updateStatus('end')"><i>🔚</i>受付終了 (切断)</button>
+                    <button class="btn bg-reset" onclick="updateStatus('initial')"><i>🔄</i>次の患者へ (新規)</button>
                 </div>
             </div>
         </div>
@@ -246,25 +249,24 @@
         'end':        { icon: '✅', title: '終了', desc: '本日の受付通知は終了しました。', alert: false }
     };
 
-    // --- AUDIO SYSTEM (Web Audio API) ---
+    // --- AUDIO SYSTEM ---
     let audioCtx = null;
     let audioUnlocked = false;
+    let lastKnownStatus = null; // Track changes
 
     window.unlockAudio = () => {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         audioCtx.resume().then(() => {
             audioUnlocked = true;
             document.getElementById('sound-enable-overlay').style.display = 'none';
-            playTone(880, 0.1, 0.05); // Short beep to confirm
+            playTone(880, 0.1, 0.05);
         });
     };
 
     function playNotificationSound() {
         if (!audioUnlocked || !audioCtx) return;
-        // Simple "Ding-Dong" pattern
-        const now = audioCtx.currentTime;
-        playTone(660, 0.2, 0);       // High
-        setTimeout(() => playTone(550, 0.4, 0), 200); // Low
+        playTone(660, 0.2, 0);       
+        setTimeout(() => playTone(550, 0.4, 0), 200); 
     }
 
     function playTone(freq, duration, delay) {
@@ -352,7 +354,15 @@
                 else btn.classList.add('st-' + data.status);
             }
             if (i == window.selectedCardId) btn.classList.add('active');
+            
+            // Interaction: Click, Right-Click, and Long-Press (iPad)
             btn.onclick = () => selectStaffCard(i);
+            btn.oncontextmenu = (e) => { e.preventDefault(); handleStaffClick(i, true); };
+            
+            let pressTimer;
+            btn.ontouchstart = () => { pressTimer = setTimeout(() => handleStaffClick(i, true), 800); };
+            btn.ontouchend = () => { clearTimeout(pressTimer); };
+            
             grid.appendChild(btn);
         }
     }
@@ -366,6 +376,16 @@
         controls.style.pointerEvents = 'auto';
         renderStaffGrid();
         renderPreview(id);
+    }
+
+    // Direct Action Handler for Sidebar (Right Click / Long Press)
+    async function handleStaffClick(id, isRightClick) {
+        // ... (Same logic as saveStatusToCloud but direct)
+        // For simplicity, we just trigger the end logic here
+        if(isRightClick) {
+             if(!confirm(`No.${id} を終了・切断しますか？`)) return;
+             await performUpdate(id, 'end', null);
+        }
     }
 
     function renderPreview(id) {
@@ -398,21 +418,24 @@
     }
 
     // --- STAFF WRITER FUNCTIONS ---
-    window.updateStatus = (statusKey) => { if (window.selectedCardId) saveStatusToCloud(statusKey, null); };
+    window.updateStatus = (statusKey) => { if (window.selectedCardId) performUpdate(window.selectedCardId, statusKey, null); };
     window.sendCustomMessage = () => {
         if (!window.selectedCardId) return;
         const text = document.getElementById('custom-msg-input').value.trim();
         if (!text) return alert("メッセージを入力してください");
-        saveStatusToCloud('custom', text);
+        performUpdate(window.selectedCardId, 'custom', text);
     };
 
-    async function saveStatusToCloud(statusKey, customText) {
+    async function performUpdate(id, statusKey, customText) {
         if (!db) return;
-        const id = window.selectedCardId;
         const currentData = cardCache[id] || {};
         
+        // [LOGIC] Key Rotation
+        // - If End: Generate new key (Invalidate old user)
+        // - If Initial (Reset): Generate new key (Ready for new user)
+        // - Else: Keep existing key
         let currentSess = currentData.sessionId;
-        if (!currentSess || statusKey === 'end' || currentData.status === 'end') {
+        if (!currentSess || statusKey === 'end' || statusKey === 'initial') {
             currentSess = generateSessionId();
         }
 
@@ -423,10 +446,9 @@
     }
 
     // ==========================================
-    // 2. PATIENT LOGIC
+    // 2. PATIENT LOGIC (READ ONLY)
     // ==========================================
     let myHeldSessionId = null; 
-    let lastKnownStatus = null; // To track changes for sound
 
     function initPatientMode(id) {
         document.body.classList.add('mode-patient');
@@ -435,27 +457,11 @@
         const storedSess = sessionStorage.getItem('er_sess_' + id);
         if (storedSess) myHeldSessionId = storedSess;
 
-        // Show sound button if needed (Browser will block audio until clicked)
         setTimeout(() => {
            if(!audioUnlocked) document.getElementById('sound-enable-overlay').style.display = 'block';
         }, 1000);
 
-        setTimeout(() => checkInPatient(id), 1500);
-    }
-
-    async function checkInPatient(id) {
-        if (!db) return;
-        const data = cardCache[id] || {};
-        const isCardEmpty = !data.status; 
-        
-        if (!myHeldSessionId && isCardEmpty) {
-            const newSess = generateSessionId();
-            myHeldSessionId = newSess;
-            sessionStorage.setItem('er_sess_' + id, newSess);
-            try {
-                await setDoc(doc(db, "cards", String(id)), { status: 'initial', time: getNowStr(), sessionId: newSess, message: null });
-            } catch(e) { console.log("Init skipped (slot busy)"); }
-        }
+        // [FIX] Removed checkInPatient (Auto-Write). Just sync.
         syncPatientView(id);
     }
 
@@ -473,15 +479,21 @@
             return; 
         }
 
-        // --- SOUND TRIGGER ---
-        // If status changed (and it's not the first load), play sound
+        // [SOUND]
         if (lastKnownStatus && lastKnownStatus !== data.status && data.status !== 'end') {
             playNotificationSound();
         }
         lastKnownStatus = data.status;
 
+        // [AUTO JOIN] If server says 'initial' (New Patient Ready) and I have no key, join.
+        if (!myHeldSessionId && data.status === 'initial') {
+            myHeldSessionId = data.sessionId;
+            sessionStorage.setItem(storageKey, myHeldSessionId);
+            syncPatientView(id);
+            return;
+        }
 
-        // --- GHOST & END CHECK ---
+        // [GHOST CHECK] Mismatch key = Disconnect
         const serverKey = data.sessionId;
         const isGhost = myHeldSessionId && serverKey && serverKey !== myHeldSessionId;
         
@@ -497,20 +509,13 @@
             return;
         }
 
-        // AUTO-JOIN
-        if (!myHeldSessionId && data.status === 'initial') {
-            myHeldSessionId = data.sessionId;
-            sessionStorage.setItem(storageKey, myHeldSessionId);
-            syncPatientView(id);
-            return;
-        }
-
+        // [NO KEY] Wait for staff
         if (!myHeldSessionId) {
              contentArea.innerHTML = `<span class="p-icon">📷</span><div class="p-title">QR読取待機</div><div class="p-info-box"><div class="p-msg">受付処理をお待ちください...</div></div>`;
              return;
         }
 
-        // ACTIVE STATE
+        // [ACTIVE]
         let icon='', title='', desc='';
         if (data.status === 'custom') {
             container.classList.add('mode-custom');
