@@ -688,16 +688,19 @@
                 icon = STATUS_MAP['custom'].icon;
                 title = STATUS_MAP['custom'].title;
                 desc = data.message || '(メッセージなし)';
+            } else if (data.status === 'initial') {
+                // [FIX] 患者接続後の画面と一致させる
+                icon = '🏥';
+                title = '受付完了';
+                desc = '順番にトリアージ・診察...';
             } else {
                 const info = STATUS_MAP[data.status] || STATUS_MAP['initial'];
                 if (info.alert) screen.classList.add('mode-alert');
                 if (data.status === 'ward') screen.classList.add('mode-ward');
                 icon = info.icon;
                 title = info.title;
-                desc = info.desc;
+                desc = Utils.truncate(info.desc, 20);
             }
-            
-            desc = Utils.truncate(desc, 20);
             
             screen.innerHTML = `
                 <span class="prev-icon">${icon}</span>
