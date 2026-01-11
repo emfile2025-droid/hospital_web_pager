@@ -34,8 +34,10 @@
     .s-card.active { border-color: white; box-shadow: 0 0 0 2px white inset; z-index: 10; }
     
     /* Status Colors */
-    .s-card.st-initial { border: 2px solid var(--c-green); color: white; background: #2d3436; }
-    .s-card.st-initial::after { content: 'ONLINE'; position: absolute; bottom: 2px; font-size: 0.5rem; color: var(--c-green); }
+    /* [MODIFIED] Silent Ready State */
+    .s-card.st-initial { border: 2px solid var(--c-green); color: white; background: #2d3436; /* No Animation */ }
+    .s-card.st-initial::after { content: 'READY'; position: absolute; bottom: 2px; font-size: 0.5rem; color: var(--c-green); }
+    
     .s-card.st-exam_start, .s-card.st-analyzing { background: var(--c-blue); color: white; border: none; }
     .s-card.st-emergency { background: var(--c-red); color: white; border: none; animation: pulse 1s infinite; }
     .s-card.st-test_start, .s-card.st-test_add { background: var(--c-purple); color: white; border: none; }
@@ -104,6 +106,14 @@
     .mode-ward .p-body { background: #f3e5f5; } .mode-ward .p-title { color: var(--c-ward); }
     .mode-end .p-body { background: #eee; justify-content: center; } .mode-end .p-icon { opacity: 0.2; } .mode-end .p-title { color: #aaa; }
     
+    /* Connect Button */
+    .btn-connect {
+        background: var(--c-blue); color: white; border: none; padding: 15px 30px;
+        border-radius: 50px; font-size: 1.2rem; font-weight: bold; cursor: pointer;
+        box-shadow: 0 4px 15px rgba(9, 132, 227, 0.4); animation: pulse 2s infinite;
+        margin-top: 20px;
+    }
+
     /* Sound Button */
     #sound-enable-overlay {
         position: absolute; bottom: 80px; z-index: 100;
@@ -113,6 +123,7 @@
         display: none;
     }
     @keyframes bounce { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-5px);} }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
 </style>
 </head>
 <body>
@@ -234,7 +245,7 @@
     // --- CONSTANTS ---
     const TOTAL_CARDS = 50;
     const STATUS_MAP = {
-        'initial':    { icon: '🏥', title: '受付完了', desc: '順番にトリアージ・診察の準備を行っています。そのままお待ちください。', alert: false },
+        'initial':    { icon: '🏥', title: '待機中', desc: 'この番号で接続しますか？<br>下のボタンを押して開始してください。', alert: false },
         'exam_start': { icon: '👨‍⚕️', title: '診察が始まりました', desc: '医師による診察が開始されました。待合室でお待ちください。', alert: false },
         'emergency':  { icon: '🚑', title: '緊急処置中', desc: '緊急の処置を行っています。対応にお時間を頂きます。', alert: true },
         'test_start': { icon: '💉', title: '検査実施中', desc: '血液検査や生理機能検査を行っています。', alert: false },
@@ -252,7 +263,7 @@
     // --- AUDIO SYSTEM ---
     let audioCtx = null;
     let audioUnlocked = false;
-    let lastKnownStatus = null; // Track changes
+    let lastKnownStatus = null; 
 
     window.unlockAudio = () => {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -295,13 +306,11 @@
         db = getFirestore(app);
         auth = getAuth(app);
         
-        // Realtime Listener
         onSnapshot(collection(db, 'cards'), (snapshot) => {
             document.getElementById('sys-status').innerText = "Server: Connected (Tokyo)";
             snapshot.docChanges().forEach((change) => {
                 cardCache[change.doc.id] = change.doc.data();
             });
-            // Re-render
             if (document.body.classList.contains('mode-staff')) {
                 renderStaffGrid();
                 if (window.selectedCardId) renderPreview(window.selectedCardId);
@@ -355,10 +364,9 @@
             }
             if (i == window.selectedCardId) btn.classList.add('active');
             
-            // Interaction: Click, Right-Click, and Long-Press (iPad)
+            // Interaction: Tap select, Long Press Reset
             btn.onclick = () => selectStaffCard(i);
             btn.oncontextmenu = (e) => { e.preventDefault(); handleStaffClick(i, true); };
-            
             let pressTimer;
             btn.ontouchstart = () => { pressTimer = setTimeout(() => handleStaffClick(i, true), 800); };
             btn.ontouchend = () => { clearTimeout(pressTimer); };
@@ -378,10 +386,7 @@
         renderPreview(id);
     }
 
-    // Direct Action Handler for Sidebar (Right Click / Long Press)
     async function handleStaffClick(id, isRightClick) {
-        // ... (Same logic as saveStatusToCloud but direct)
-        // For simplicity, we just trigger the end logic here
         if(isRightClick) {
              if(!confirm(`No.${id} を終了・切断しますか？`)) return;
              await performUpdate(id, 'end', null);
@@ -417,7 +422,7 @@
         screen.innerHTML = `<span class="prev-icon">${icon}</span><div class="prev-title">${title}</div><div class="prev-msg">${desc}</div><div class="prev-time">更新: ${data.time}</div>`;
     }
 
-    // --- STAFF WRITER FUNCTIONS ---
+    // --- STAFF WRITER ---
     window.updateStatus = (statusKey) => { if (window.selectedCardId) performUpdate(window.selectedCardId, statusKey, null); };
     window.sendCustomMessage = () => {
         if (!window.selectedCardId) return;
@@ -430,10 +435,7 @@
         if (!db) return;
         const currentData = cardCache[id] || {};
         
-        // [LOGIC] Key Rotation
-        // - If End: Generate new key (Invalidate old user)
-        // - If Initial (Reset): Generate new key (Ready for new user)
-        // - Else: Keep existing key
+        // Key Rotation on End or Reset
         let currentSess = currentData.sessionId;
         if (!currentSess || statusKey === 'end' || statusKey === 'initial') {
             currentSess = generateSessionId();
@@ -446,7 +448,7 @@
     }
 
     // ==========================================
-    // 2. PATIENT LOGIC (READ ONLY)
+    // 2. PATIENT LOGIC (MANUAL CHECK-IN)
     // ==========================================
     let myHeldSessionId = null; 
 
@@ -461,7 +463,14 @@
            if(!audioUnlocked) document.getElementById('sound-enable-overlay').style.display = 'block';
         }, 1000);
 
-        // [FIX] Removed checkInPatient (Auto-Write). Just sync.
+        // No auto-write. Just sync.
+        syncPatientView(id);
+    }
+    
+    // Explicit manual join function
+    window.manualJoin = (id, sessId) => {
+        myHeldSessionId = sessId;
+        sessionStorage.setItem('er_sess_' + id, myHeldSessionId);
         syncPatientView(id);
     }
 
@@ -485,15 +494,7 @@
         }
         lastKnownStatus = data.status;
 
-        // [AUTO JOIN] If server says 'initial' (New Patient Ready) and I have no key, join.
-        if (!myHeldSessionId && data.status === 'initial') {
-            myHeldSessionId = data.sessionId;
-            sessionStorage.setItem(storageKey, myHeldSessionId);
-            syncPatientView(id);
-            return;
-        }
-
-        // [GHOST CHECK] Mismatch key = Disconnect
+        // [GHOST / END CHECK]
         const serverKey = data.sessionId;
         const isGhost = myHeldSessionId && serverKey && serverKey !== myHeldSessionId;
         
@@ -502,16 +503,27 @@
             renderEndScreen(contentArea, container, data.time, true);
             return;
         }
-
         if (data.status === 'end') {
             sessionStorage.removeItem(storageKey); 
             renderEndScreen(contentArea, container, data.time, false);
             return;
         }
 
-        // [NO KEY] Wait for staff
+        // [MANUAL CONNECT SCREEN]
+        // If server is 'initial' (Waiting) AND I have no key: Show Connect Button
+        if (!myHeldSessionId && data.status === 'initial') {
+            contentArea.innerHTML = `
+                <span class="p-icon">📲</span>
+                <div class="p-title">接続確認</div>
+                <div class="p-msg" style="background:none;">診察券番号 ${id}番 で<br>受付状況を確認しますか？</div>
+                <button class="btn-connect" onclick="manualJoin(${id}, '${data.sessionId}')">接続する</button>
+            `;
+            return;
+        }
+
+        // [NO KEY] Wait (Someone else took it, or I am late)
         if (!myHeldSessionId) {
-             contentArea.innerHTML = `<span class="p-icon">📷</span><div class="p-title">QR読取待機</div><div class="p-info-box"><div class="p-msg">受付処理をお待ちください...</div></div>`;
+             contentArea.innerHTML = `<span class="p-icon">🔒</span><div class="p-title">利用不可</div><div class="p-info-box"><div class="p-msg">別の端末で使用中か、<br>受付がリセットされました。</div></div>`;
              return;
         }
 
@@ -522,9 +534,15 @@
             const def = STATUS_MAP['custom']; icon = def.icon; title = def.title; desc = data.message || '(メッセージなし)';
         } else {
             const info = STATUS_MAP[data.status] || STATUS_MAP['initial'];
-            if (info.alert) container.classList.add('mode-alert');
-            if (data.status === 'ward') container.classList.add('mode-ward'); 
-            icon = info.icon; title = info.title; desc = info.desc;
+            // iPad shows 'Waiting', but Patient sees 'Reception Complete' once connected
+            if (data.status === 'initial') {
+                 // Override for Connected Patient
+                 icon = '🏥'; title = '受付完了'; desc = '順番にトリアージ・診察の準備を行っています。そのままお待ちください。';
+            } else {
+                 if (info.alert) container.classList.add('mode-alert');
+                 if (data.status === 'ward') container.classList.add('mode-ward'); 
+                 icon = info.icon; title = info.title; desc = info.desc;
+            }
         }
         
         contentArea.innerHTML = `<span class="p-icon">${icon}</span><div class="p-title">${title}</div><div class="p-info-box"><div class="p-msg">${desc}</div><div class="p-time">更新: ${data.time}</div></div>`;
