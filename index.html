@@ -12,7 +12,7 @@
         --c-blue: #0984e3; --c-red: #d63031; --c-purple: #6c5ce7;
         --c-orange: #e17055; --c-yellow: #fdcb6e; --c-green: #00b894;
         --c-grey: #636e72; --c-teal: #00cec9;
-        --c-ward: #8e44ad; /* 病棟移動用カラー */
+        --c-ward: #8e44ad;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Yu Gothic", sans-serif; }
     body { height: 100vh; overflow: hidden; margin: 0; }
@@ -22,18 +22,16 @@
     body.mode-staff #staff-app { display: flex; }
     body.mode-patient #patient-app { display: flex; }
 
-    /* === STAFF UI STYLES === */
+    /* === STAFF UI === */
     #staff-app { background: var(--bg-staff); color: white; flex-direction: column; }
     .staff-header { padding: 15px; background: #000; border-bottom: 1px solid #555; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
     .staff-body { flex: 1; display: flex; overflow: hidden; }
     
-    /* Sidebar Grid */
     .card-list { width: 280px; background: #222; padding: 10px; overflow-y: auto; border-right: 1px solid #555; display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 55px; gap: 6px; flex-shrink: 0; }
     .s-card { background: #444; border: 2px solid #555; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; color: #aaa; font-size: 1.1rem; user-select: none; position: relative; transition: all 0.2s; }
     .s-card:hover { filter: brightness(1.2); }
     .s-card.active { border-color: white; box-shadow: 0 0 0 2px white inset; z-index: 10; }
     
-    /* Dynamic Status Colors */
     .s-card.st-initial { border: 2px solid var(--c-green); color: white; background: #2d3436; }
     .s-card.st-initial::after { content: 'ONLINE'; position: absolute; bottom: 2px; font-size: 0.5rem; color: var(--c-green); }
     .s-card.st-exam_start, .s-card.st-analyzing { background: var(--c-blue); color: white; border: none; }
@@ -46,10 +44,7 @@
     .s-card.st-custom { background: var(--c-teal); color: #333; border: none; }
     .s-card.st-end { opacity: 0.4; }
 
-    /* Controls Area */
     .controls { flex: 1; padding: 20px; overflow-y: auto; background: #2d3436; display: flex; flex-direction: column; gap: 20px; }
-    .controls-left-panel, .controls-right-panel { display: flex; flex-direction: column; gap: 20px; }
-
     @media (min-width: 768px) {
         .controls { display: grid; grid-template-columns: 380px 1fr; grid-template-rows: 1fr; gap: 30px; align-items: start; overflow-y: hidden; }
         .controls-right-panel { overflow-y: auto; max-height: 100%; padding-right: 5px; }
@@ -57,7 +52,6 @@
         .preview-info { margin-bottom: 0; margin-right: 20px; }
     }
     
-    /* Live Preview Monitor */
     .preview-area { background: #1a1a1a; padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; border: 1px solid #444; text-align: center; }
     .preview-info { flex: 1; margin-bottom: 15px; }
     .preview-phone { width: 160px; height: 280px; background: white; border-radius: 16px; border: 5px solid #333; overflow: hidden; position: relative; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.3); margin: 0 auto; }
@@ -68,13 +62,11 @@
     .prev-msg { font-size: 0.65rem; color: #636e72; background: #f1f2f6; padding: 6px; border-radius: 6px; width: 100%; line-height: 1.4; margin-bottom: 5px; }
     .prev-time { font-size: 0.7rem; font-weight: bold; color: #d63031; border-top: 1px dashed #ccc; width: 100%; padding-top: 4px; margin-top: 4px; }
     
-    /* Preview Modes */
     .preview-body.mode-alert { background: #fff5f5; } .preview-body.mode-alert .prev-title { color: var(--c-red); }
     .preview-body.mode-custom { background: #e0f7fa; } .preview-body.mode-custom .prev-title { color: #006064; }
     .preview-body.mode-ward { background: #f3e5f5; } .preview-body.mode-ward .prev-title { color: var(--c-ward); }
     .preview-body.mode-end { background: #eee; } .preview-body.mode-end .prev-icon { opacity: 0.3; }
 
-    /* Buttons */
     .custom-input-area { background: #3a4244; padding: 15px; border-radius: 8px; border: 1px solid #555; }
     .custom-input-row { display: flex; gap: 10px; margin-top: 10px; }
     input[type="text"] { flex: 1; padding: 12px; border-radius: 6px; border: none; font-size: 1rem; outline: none; }
@@ -90,26 +82,34 @@
     .bg-orange { background: var(--c-orange); } .bg-yellow { background: var(--c-yellow); color: #333; } .bg-green { background: var(--c-green); } .bg-grey { background: var(--c-grey); }
     .bg-ward { background: var(--c-ward); }
 
-    /* === PATIENT UI STYLES === */
+    /* === PATIENT UI === */
     #patient-app { background: var(--bg-patient); flex-direction: column; align-items: center; justify-content: center; }
     .phone-container { width: 100%; max-width: 480px; height: 100%; background: white; display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(0,0,0,0.1); }
     .p-header { background: #2d3436; color: white; padding: 18px; text-align: center; font-weight: bold; font-size: 1.1rem; }
-    .p-body { flex: 1; padding: 30px; display: flex; flex-direction: column; align-items: center; text-align: center; overflow-y: auto; }
+    .p-body { flex: 1; padding: 30px; display: flex; flex-direction: column; align-items: center; text-align: center; overflow-y: auto; position: relative;}
     .p-badge { background: #dfe6e9; padding: 6px 16px; border-radius: 20px; font-weight: bold; color: #636e72; margin-bottom: 30px; font-size: 0.9rem; }
     .p-icon { font-size: 7rem; margin: 10px 0 20px; display: block; line-height: 1; }
     .p-title { font-size: 2rem; font-weight: 800; color: #2d3436; margin-bottom: 20px; line-height: 1.3; }
     
-    /* Time & Msg Container */
     .p-info-box { background: #f1f2f6; padding: 20px; border-radius: 12px; width: 100%; margin-top: auto; border: 1px solid #e1e1e1; }
     .p-msg { font-size: 1.1rem; color: #636e72; line-height: 1.6; margin-bottom: 15px; word-break: break-all; }
     .p-time { font-size: 1.2rem; font-weight: bold; color: #d63031; border-top: 2px dashed #ccc; padding-top: 10px; width: 100%; display: block; }
     
-    /* Patient States */
     .mode-alert .p-body { background: #fff5f5; } .mode-alert .p-title { color: var(--c-red); }
     .mode-custom .p-body { background: #e0f7fa; } .mode-custom .p-title { color: #006064; }
     .mode-ward .p-body { background: #f3e5f5; } .mode-ward .p-title { color: var(--c-ward); }
     .mode-end .p-body { background: #eee; justify-content: center; } .mode-end .p-icon { opacity: 0.2; } .mode-end .p-title { color: #aaa; }
     
+    /* Sound Button */
+    #sound-enable-overlay {
+        position: absolute; bottom: 80px; z-index: 100;
+        background: var(--c-blue); color: white; padding: 10px 20px;
+        border-radius: 30px; font-weight: bold; cursor: pointer;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3); animation: bounce 2s infinite;
+        display: none; /* JS controls this */
+    }
+    @keyframes bounce { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-5px);} }
+
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 </style>
 </head>
@@ -129,7 +129,6 @@
         </div>
         
         <div class="controls" id="s-controls" style="opacity:0.3; pointer-events:none;">
-            
             <div class="controls-left-panel">
                 <div class="preview-area">
                     <div class="preview-info">
@@ -206,7 +205,7 @@
                     <div class="p-time">更新: --:--</div>
                 </div>
             </div>
-            <div style="font-size:0.6rem; color:#ccc; margin-top:20px; opacity:0.5;">Secure Session Active</div>
+            <div id="sound-enable-overlay" onclick="unlockAudio()">🔊 通知音を有効にする</div>
         </div>
     </div>
 </div>
@@ -247,6 +246,38 @@
         'end':        { icon: '✅', title: '終了', desc: '本日の受付通知は終了しました。', alert: false }
     };
 
+    // --- AUDIO SYSTEM (Web Audio API) ---
+    let audioCtx = null;
+    let audioUnlocked = false;
+
+    window.unlockAudio = () => {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioCtx.resume().then(() => {
+            audioUnlocked = true;
+            document.getElementById('sound-enable-overlay').style.display = 'none';
+            playTone(880, 0.1, 0.05); // Short beep to confirm
+        });
+    };
+
+    function playNotificationSound() {
+        if (!audioUnlocked || !audioCtx) return;
+        // Simple "Ding-Dong" pattern
+        const now = audioCtx.currentTime;
+        playTone(660, 0.2, 0);       // High
+        setTimeout(() => playTone(550, 0.4, 0), 200); // Low
+    }
+
+    function playTone(freq, duration, delay) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        osc.start(audioCtx.currentTime + delay);
+        osc.stop(audioCtx.currentTime + delay + duration);
+    }
+
     // --- HELPERS ---
     const generateSessionId = () => Math.random().toString(36).substring(2, 12);
     const getNowStr = () => { const now = new Date(); return `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`; };
@@ -265,12 +296,10 @@
         // Realtime Listener
         onSnapshot(collection(db, 'cards'), (snapshot) => {
             document.getElementById('sys-status').innerText = "Server: Connected (Tokyo)";
-            
             snapshot.docChanges().forEach((change) => {
                 cardCache[change.doc.id] = change.doc.data();
             });
-
-            // Trigger Re-renders
+            // Re-render
             if (document.body.classList.contains('mode-staff')) {
                 renderStaffGrid();
                 if (window.selectedCardId) renderPreview(window.selectedCardId);
@@ -278,21 +307,13 @@
                 const myId = document.getElementById('p-num').innerText;
                 if (myId && myId !== '--') syncPatientView(myId);
             }
-        }, (err) => {
-            console.error("Firestore Error:", err);
-            document.getElementById('sys-status').innerText = "Server: Error (Check Config)";
         });
-
-    } catch (e) {
-        console.error("Init Error:", e);
-        document.getElementById('sys-status').innerText = "Error: Config Missing?";
-    }
+    } catch (e) { console.error("Init Error:", e); }
 
     // --- MODE SWITCHER ---
     window.addEventListener('DOMContentLoaded', () => {
         const myId = new URLSearchParams(window.location.search).get('id');
-        if (myId) initPatientMode(myId); 
-        else initStaffMode();
+        if (myId) initPatientMode(myId); else initStaffMode();
     });
 
     // ==========================================
@@ -300,26 +321,20 @@
     // ==========================================
     function initStaffMode() {
         document.body.classList.add('mode-staff');
-        
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('auth-display').innerText = `User: ${user.email}`;
                 renderStaffGrid();
-            } else {
-                performStaffLogin();
-            }
+            } else { performStaffLogin(); }
         });
     }
 
     function performStaffLogin() {
-        const email = prompt("【職員認証】メールアドレスを入力:", "");
-        const password = prompt("【職員認証】パスワードを入力:", "");
+        const email = prompt("【職員認証】メールアドレス:", "");
+        const password = prompt("【職員認証】パスワード:", "");
         if (email && password) {
             signInWithEmailAndPassword(auth, email, password)
-                .then(() => alert("認証成功: システムに接続しました"))
                 .catch((e) => { alert("認証失敗: " + e.message); location.reload(); });
-        } else {
-            alert("利用にはログインが必要です");
         }
     }
 
@@ -331,14 +346,12 @@
             btn.className = 's-card';
             btn.innerText = i;
             const data = cardCache[i];
-            
             if (data && data.status) {
                 if (data.status === 'initial') btn.classList.add('st-initial');
                 else if (data.status === 'end') btn.classList.add('st-end');
                 else btn.classList.add('st-' + data.status);
             }
             if (i == window.selectedCardId) btn.classList.add('active');
-            
             btn.onclick = () => selectStaffCard(i);
             grid.appendChild(btn);
         }
@@ -348,11 +361,9 @@
         window.selectedCardId = id;
         document.getElementById('s-target-num').innerText = id;
         document.getElementById('custom-msg-input').value = '';
-        
         const controls = document.getElementById('s-controls');
         controls.style.opacity = 1;
         controls.style.pointerEvents = 'auto';
-        
         renderStaffGrid();
         renderPreview(id);
     }
@@ -360,7 +371,6 @@
     function renderPreview(id) {
         const data = cardCache[id];
         const screen = document.getElementById('prev-screen');
-        
         screen.className = 'preview-body';
         
         if (!data || !data.status) {
@@ -383,13 +393,11 @@
             if (data.status === 'ward') screen.classList.add('mode-ward'); 
             icon = info.icon; title = info.title; desc = info.desc;
         }
-        
         if(desc.length > 20) desc = desc.substring(0, 20) + '...';
-        
         screen.innerHTML = `<span class="prev-icon">${icon}</span><div class="prev-title">${title}</div><div class="prev-msg">${desc}</div><div class="prev-time">更新: ${data.time}</div>`;
     }
 
-    // --- WRITER FUNCTIONS ---
+    // --- STAFF WRITER FUNCTIONS ---
     window.updateStatus = (statusKey) => { if (window.selectedCardId) saveStatusToCloud(statusKey, null); };
     window.sendCustomMessage = () => {
         if (!window.selectedCardId) return;
@@ -403,39 +411,34 @@
         const id = window.selectedCardId;
         const currentData = cardCache[id] || {};
         
-        // [ZOMBIE FIX 1] Always generate new session on END or if currently END
-        // This ensures old clients are invalidated immediately
         let currentSess = currentData.sessionId;
         if (!currentSess || statusKey === 'end' || currentData.status === 'end') {
             currentSess = generateSessionId();
         }
 
-        const payload = {
-            status: statusKey,
-            time: getNowStr(),
-            message: customText,
-            sessionId: currentSess
-        };
-
+        const payload = { status: statusKey, time: getNowStr(), message: customText, sessionId: currentSess };
         try {
             await setDoc(doc(db, "cards", String(id)), payload, { merge: true });
-        } catch(e) {
-            console.error(e);
-            alert("通信エラー: ログイン状態を確認してください");
-        }
+        } catch(e) { console.error(e); alert("通信エラー: ログイン状態を確認してください"); }
     }
 
     // ==========================================
     // 2. PATIENT LOGIC
     // ==========================================
     let myHeldSessionId = null; 
+    let lastKnownStatus = null; // To track changes for sound
 
     function initPatientMode(id) {
         document.body.classList.add('mode-patient');
         document.getElementById('p-num').innerText = id;
-
+        
         const storedSess = sessionStorage.getItem('er_sess_' + id);
         if (storedSess) myHeldSessionId = storedSess;
+
+        // Show sound button if needed (Browser will block audio until clicked)
+        setTimeout(() => {
+           if(!audioUnlocked) document.getElementById('sound-enable-overlay').style.display = 'block';
+        }, 1000);
 
         setTimeout(() => checkInPatient(id), 1500);
     }
@@ -443,28 +446,16 @@
     async function checkInPatient(id) {
         if (!db) return;
         const data = cardCache[id] || {};
-
-        // [ZOMBIE FIX 2] Do NOT auto-init if card is already 'end' or occupied
-        // Only init if it's truly empty/undefined
-        // This prevents re-opening a closed browser from hijacking an 'end' card back to 'initial'
         const isCardEmpty = !data.status; 
         
         if (!myHeldSessionId && isCardEmpty) {
             const newSess = generateSessionId();
             myHeldSessionId = newSess;
             sessionStorage.setItem('er_sess_' + id, newSess);
-            
             try {
-                // Rule: Unauthenticated user can ONLY write if status == 'initial'
-                await setDoc(doc(db, "cards", String(id)), {
-                    status: 'initial',
-                    time: getNowStr(),
-                    sessionId: newSess,
-                    message: null
-                });
-            } catch(e) { console.error("Check-in blocked (Normal if slot busy)", e); }
+                await setDoc(doc(db, "cards", String(id)), { status: 'initial', time: getNowStr(), sessionId: newSess, message: null });
+            } catch(e) { console.log("Init skipped (slot busy)"); }
         }
-        
         syncPatientView(id);
     }
 
@@ -478,22 +469,45 @@
         document.getElementById('p-view-body').className = 'p-body';
 
         if (!data || !data.status) { 
-            contentArea.innerHTML = `<span class="p-icon">🤔</span><div class="p-title">未登録</div><div class="p-info-box"><div class="p-msg">データを取得中...</div></div>`; 
+            contentArea.innerHTML = `<span class="p-icon">🤔</span><div class="p-title">未登録</div><div class="p-info-box"><div class="p-msg">職員の操作をお待ちください</div></div>`; 
             return; 
         }
 
-        // [ZOMBIE FIX 3] Ghost Check & Clear Storage on Mismatch
-        if (myHeldSessionId && data.sessionId && data.sessionId !== myHeldSessionId) {
+        // --- SOUND TRIGGER ---
+        // If status changed (and it's not the first load), play sound
+        if (lastKnownStatus && lastKnownStatus !== data.status && data.status !== 'end') {
+            playNotificationSound();
+        }
+        lastKnownStatus = data.status;
+
+
+        // --- GHOST & END CHECK ---
+        const serverKey = data.sessionId;
+        const isGhost = myHeldSessionId && serverKey && serverKey !== myHeldSessionId;
+        
+        if (isGhost) {
             sessionStorage.removeItem(storageKey); 
             renderEndScreen(contentArea, container, data.time, true);
             return;
         }
 
-        // END STATE
         if (data.status === 'end') {
             sessionStorage.removeItem(storageKey); 
             renderEndScreen(contentArea, container, data.time, false);
             return;
+        }
+
+        // AUTO-JOIN
+        if (!myHeldSessionId && data.status === 'initial') {
+            myHeldSessionId = data.sessionId;
+            sessionStorage.setItem(storageKey, myHeldSessionId);
+            syncPatientView(id);
+            return;
+        }
+
+        if (!myHeldSessionId) {
+             contentArea.innerHTML = `<span class="p-icon">📷</span><div class="p-title">QR読取待機</div><div class="p-info-box"><div class="p-msg">受付処理をお待ちください...</div></div>`;
+             return;
         }
 
         // ACTIVE STATE
@@ -509,13 +523,11 @@
         }
         
         contentArea.innerHTML = `<span class="p-icon">${icon}</span><div class="p-title">${title}</div><div class="p-info-box"><div class="p-msg">${desc}</div><div class="p-time">更新: ${data.time}</div></div>`;
-        document.getElementById('p-time').innerText = `更新: ${data.time}`;
     }
 
     function renderEndScreen(el, container, time, isGhost) {
         container.classList.add('mode-end');
         el.innerHTML = `<span class="p-icon">🔚</span><div class="p-title">終了</div><div class="p-info-box"><div class="p-msg" style="font-weight:bold;">${isGhost ? '接続が切断されました<br>(新しい診察が開始されています)' : '本日の受付通知は終了しました'}</div><div class="p-time">最終更新: ${time}</div></div>`;
-        document.getElementById('p-time').innerText = `最終更新: ${time}`;
     }
 
 </script>
