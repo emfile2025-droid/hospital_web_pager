@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ER状況共有システム Ver.2026.01.11-v2</title>
+<title>ER状況共有システム Ver.2026.01.11-Secure</title>
 <style>
     /* --- DESIGN SYSTEM --- */
     :root {
@@ -15,12 +15,14 @@
         --c-ward: #8e44ad;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Yu Gothic", sans-serif; }
-    body { height: 100vh; overflow: hidden; margin: 0; }
+    body { height: 100vh; overflow: hidden; margin: 0; background: #000; } /* Default Black Background */
     
     /* View Switcher */
     #staff-app, #patient-app { display: none; height: 100%; width: 100%; }
+    
+    /* Only show apps when specific classes are added explicitly */
     body.mode-staff #staff-app { display: flex; }
-    body.mode-patient #patient-app { display: flex; }
+    body.mode-patient #patient-app { display: flex; background: var(--bg-patient); }
 
     /* === STAFF UI === */
     #staff-app { background: var(--bg-staff); color: white; flex-direction: column; }
@@ -88,8 +90,7 @@
     .bg-reset { background: #34495e; border: 2px solid #555; }
 
     /* === PATIENT UI === */
-    #patient-app { background: var(--bg-patient); flex-direction: column; align-items: center; justify-content: center; }
-    .phone-container { width: 100%; max-width: 480px; height: 100%; background: white; display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(0,0,0,0.1); }
+    .phone-container { width: 100%; max-width: 480px; height: 100%; background: white; display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(0,0,0,0.1); margin: 0 auto; }
     .p-header { background: #2d3436; color: white; padding: 18px; text-align: center; font-weight: bold; font-size: 1.1rem; }
     .p-body { flex: 1; padding: 30px; display: flex; flex-direction: column; align-items: center; text-align: center; overflow-y: auto; position: relative;}
     .p-badge { background: #dfe6e9; padding: 6px 16px; border-radius: 20px; font-weight: bold; color: #636e72; margin-bottom: 30px; font-size: 0.9rem; }
@@ -144,6 +145,13 @@
     
     @keyframes bounce { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-5px);} }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+
+    /* Clear Block Link */
+    .clear-block-link { 
+        margin-top: 30px; font-size: 0.8rem; color: #0984e3; 
+        text-decoration: underline; cursor: pointer; opacity: 0.7; 
+    }
+    .clear-block-link:hover { opacity: 1; }
 
 </style>
 </head>
@@ -267,7 +275,7 @@
     // CONSTANTS & STATUS DEFINITIONS
     // ==========================================================
     const TOTAL_CARDS = 50;
-    const BLOCK_DURATION_MS = Infinity; // 無期限ブロック（再来院は手動解除）
+    const BLOCK_DURATION_MS = Infinity; 
     
     const STATUS_MAP = {
         'initial':    { icon: '🏥', title: '待機中', desc: 'この番号で接続しますか？<br>下のボタンを押して開始してください。', alert: false },
@@ -286,20 +294,20 @@
     };
 
     // ==========================================================
-    // [NEW] ACCESS STATE ENUM - 状態を明確に分類
+    // ACCESS STATE ENUM
     // ==========================================================
     const AccessState = Object.freeze({
-        NOT_REGISTERED: 'NOT_REGISTERED',  // サーバーにデータなし
-        CAN_JOIN:       'CAN_JOIN',        // 接続可能（initialで未接続）
-        ACTIVE:         'ACTIVE',          // アクティブ接続中
-        EXPIRED:        'EXPIRED',         // セッション期限切れ（ゴースト）
-        BLOCKED:        'BLOCKED',         // ブロック中（再利用禁止）
-        ENDED:          'ENDED',           // 正常終了
-        NO_ACCESS:      'NO_ACCESS'        // アクセス権なし
+        NOT_REGISTERED: 'NOT_REGISTERED', 
+        CAN_JOIN:       'CAN_JOIN',       
+        ACTIVE:         'ACTIVE',         
+        EXPIRED:        'EXPIRED',        
+        BLOCKED:        'BLOCKED',        
+        ENDED:          'ENDED',          
+        NO_ACCESS:      'NO_ACCESS'       
     });
 
     // ==========================================================
-    // [NEW] STATE MACHINE - 許可される状態遷移を定義
+    // STATE MACHINE
     // ==========================================================
     const StateMachine = {
         transitions: {
@@ -360,26 +368,22 @@
     };
 
     // ==========================================================
-    // [NEW] BLOCK MANAGER - 接続履歴ベースのブロック管理
-    // 「この端末がこの番号に接続したことがある」で判定
+    // BLOCK MANAGER
     // ==========================================================
     const BlockManager = {
         _getHistoryKey(id) { return `er_history_${id}`; },
         
-        // 接続時に履歴を記録
         recordConnection(id) {
             const data = { connectedAt: Date.now() };
             localStorage.setItem(this._getHistoryKey(id), JSON.stringify(data));
         },
         
-        // この端末がこの番号に接続したことがあるか
         hasConnectedBefore(id) {
             try {
                 const raw = localStorage.getItem(this._getHistoryKey(id));
                 if (!raw) return false;
                 
                 const data = JSON.parse(raw);
-                // 時間経過で自動解除（24時間）
                 if (Date.now() - data.connectedAt > BLOCK_DURATION_MS) {
                     this.clearHistory(id);
                     return false;
@@ -388,14 +392,13 @@
             } catch { return false; }
         },
         
-        // 履歴をクリア（再来院時のみ使用）
         clearHistory(id) {
             localStorage.removeItem(this._getHistoryKey(id));
         }
     };
 
     // ==========================================================
-    // [NEW] SESSION MANAGER - セッション管理の単純化
+    // SESSION MANAGER
     // ==========================================================
     const SessionManager = {
         _getKey(id) { return `er_session_${id}`; },
@@ -406,7 +409,6 @@
         
         set(id, sessionId) {
             sessionStorage.setItem(this._getKey(id), sessionId);
-            // 接続時に履歴も記録
             BlockManager.recordConnection(id);
         },
         
@@ -414,42 +416,32 @@
             sessionStorage.removeItem(this._getKey(id));
         },
         
-        // [CORE] 統一されたアクセス状態判定
         getAccessState(id, data) {
             const myToken = this.get(id);
             const serverToken = data?.sessionId;
             
-            // 1. サーバーにデータなし
             if (!data || !serverToken) {
                 return AccessState.NOT_REGISTERED;
             }
             
-            // 2. アクティブなトークンを持っている場合
             if (myToken) {
-                // トークン一致 → アクティブまたは終了
                 if (myToken === serverToken) {
                     if (data.status === 'end') {
                         return AccessState.ENDED;
                     }
                     return AccessState.ACTIVE;
                 }
-                // トークン不一致 → セッション期限切れ
                 return AccessState.EXPIRED;
             }
             
-            // 3. トークンなし（未接続または過去に接続済み）
-            
-            // この端末が過去にこの番号に接続したことがある → ブロック
             if (BlockManager.hasConnectedBefore(id)) {
                 return AccessState.BLOCKED;
             }
             
-            // 接続可能（initial状態で未接続）
             if (data.status === 'initial') {
                 return AccessState.CAN_JOIN;
             }
             
-            // それ以外 → アクセス権なし
             return AccessState.NO_ACCESS;
         }
     };
@@ -479,20 +471,15 @@
         currentAccessState: null,
         isOnline: true,
         
-        // --- INITIALIZATION ---
         init() {
             try {
                 const app = initializeApp(firebaseConfig);
                 this.db = getFirestore(app);
                 this.auth = getAuth(app);
                 
-                // オンライン/オフライン監視
                 this.setupConnectivityMonitor();
-                
-                // Firebase リスナー
                 this.setupFirebaseListener();
                 
-                // モード判定
                 const myId = new URLSearchParams(window.location.search).get('id');
                 if (myId) {
                     this.initPatientMode(myId);
@@ -527,17 +514,15 @@
         setupFirebaseListener() {
             onSnapshot(collection(this.db, 'cards'), (snapshot) => {
                 this.setOnlineState(true);
-                document.getElementById('sys-status').innerHTML = 
-                    '<span class="conn-dot online"></span>Connected (Tokyo)';
+                const sysStatus = document.getElementById('sys-status');
+                if(sysStatus) sysStatus.innerHTML = '<span class="conn-dot online"></span>Connected';
                 
-                // 差分更新のみ処理
                 snapshot.docChanges().forEach((change) => {
                     const id = change.doc.id;
                     const oldData = this.cardCache[id];
                     const newData = change.doc.data();
                     this.cardCache[id] = newData;
                     
-                    // [DIFF RENDER] 変更があったカードのみ更新
                     if (document.body.classList.contains('mode-staff')) {
                         this.updateSingleCard(id, newData);
                         if (id == this.selectedCardId) {
@@ -546,7 +531,6 @@
                     }
                 });
                 
-                // 患者モード
                 if (document.body.classList.contains('mode-patient') && this.patientId) {
                     this.syncPatientView(this.patientId);
                 }
@@ -556,17 +540,17 @@
             });
         },
         
-        // ===========================================
-        // STAFF MODE
-        // ===========================================
+        // --- STAFF MODE ---
         initStaffMode() {
-            document.body.classList.add('mode-staff');
+            // [SECURITY FIX] DO NOT add 'mode-staff' class yet!
+            // Wait for authentication.
             
-            // 初期グリッド生成（1回のみ）
             this.buildStaffGrid();
             
             onAuthStateChanged(this.auth, (user) => {
                 if (user) {
+                    // [SECURITY FIX] Only reveal UI after auth
+                    document.body.classList.add('mode-staff'); 
                     document.getElementById('auth-display').innerText = `User: ${user.email}`;
                 } else {
                     this.performStaffLogin();
@@ -577,13 +561,20 @@
         performStaffLogin() {
             const email = prompt("【職員認証】メールアドレス:", "");
             const password = prompt("【職員認証】パスワード:", "");
+            
             if (email && password) {
                 signInWithEmailAndPassword(this.auth, email, password)
-                    .catch((e) => { alert("認証失敗: " + e.message); location.reload(); });
+                    .catch((e) => { 
+                        alert("認証失敗: " + e.message); 
+                        location.reload(); 
+                    });
+            } else {
+                // Cancelled or empty
+                alert("認証が必要です。リロードします。");
+                location.reload();
             }
         },
         
-        // [NEW] 初期グリッド構築（DOM生成は1回のみ）
         buildStaffGrid() {
             const grid = document.getElementById('s-grid');
             grid.innerHTML = '';
@@ -597,7 +588,6 @@
                 btn.onclick = () => this.selectStaffCard(i);
                 btn.oncontextmenu = (e) => { e.preventDefault(); this.handleStaffRightClick(i); };
                 
-                // 長押し対応
                 let pressTimer;
                 btn.ontouchstart = () => { pressTimer = setTimeout(() => this.handleStaffRightClick(i), 800); };
                 btn.ontouchend = () => { clearTimeout(pressTimer); };
@@ -606,21 +596,17 @@
             }
         },
         
-        // [NEW] 差分レンダリング - 単一カード更新
         updateSingleCard(id, data) {
             const card = document.querySelector(`[data-card-id="${id}"]`);
             if (!card) return;
             
-            // クラスをリセット
             card.className = 's-card';
             card.dataset.cardId = id;
             
-            // ステータス適用
             if (data && data.status) {
                 card.classList.add('st-' + data.status);
             }
             
-            // 選択状態
             if (id == this.selectedCardId) {
                 card.classList.add('active');
             }
@@ -637,7 +623,6 @@
             controls.style.opacity = 1;
             controls.style.pointerEvents = 'auto';
             
-            // 差分更新：前の選択と新しい選択のみ
             if (prevId) this.updateSingleCard(prevId, this.cardCache[prevId]);
             this.updateSingleCard(id, this.cardCache[id]);
             
@@ -683,7 +668,6 @@
                 title = STATUS_MAP['custom'].title;
                 desc = data.message || '(メッセージなし)';
             } else if (data.status === 'initial') {
-                // [FIX] 患者接続後の画面と一致させる
                 icon = '🏥';
                 title = '受付完了';
                 desc = '順番にトリアージ・診察...';
@@ -704,7 +688,6 @@
             `;
         },
         
-        // --- STAFF WRITER ---
         updateStatus(statusKey) {
             if (this.selectedCardId) {
                 this.performUpdate(this.selectedCardId, statusKey, null);
@@ -724,7 +707,6 @@
             const currentData = this.cardCache[id] || {};
             let currentSess = currentData.sessionId;
             
-            // 終了・リセット時は新しいセッションID
             if (!currentSess || statusKey === 'end' || statusKey === 'initial') {
                 currentSess = Utils.generateSessionId();
             }
@@ -744,15 +726,12 @@
             }
         },
         
-        // ===========================================
-        // PATIENT MODE
-        // ===========================================
+        // --- PATIENT MODE ---
         initPatientMode(id) {
             document.body.classList.add('mode-patient');
             this.patientId = id;
             document.getElementById('p-num').innerText = id;
             
-            // 音声有効化ボタン表示
             setTimeout(() => {
                 if (!AudioSystem.unlocked) {
                     document.getElementById('sound-enable-overlay').style.display = 'block';
@@ -762,26 +741,21 @@
             this.syncPatientView(id);
         },
         
-        // [NEW] 統一されたPatient View同期
         syncPatientView(id) {
             const data = this.cardCache[id];
             const container = document.getElementById('patient-app');
             const contentArea = document.getElementById('p-content-area');
             
-            // リセット
-            container.className = '';
+            container.className = ''; 
             document.getElementById('p-view-body').className = 'p-body';
             
-            // [CORE] アクセス状態を判定
             const accessState = SessionManager.getAccessState(id, data);
             
-            // 状態遷移の検証
             if (this.currentAccessState && !StateMachine.validate(this.currentAccessState, accessState)) {
-                console.warn(`Unexpected state transition, forcing to: ${accessState}`);
+                console.warn(`Unexpected state transition: ${this.currentAccessState} -> ${accessState}`);
             }
             this.currentAccessState = accessState;
             
-            // [SOUND] ステータス変更時に通知音
             if (data && this.lastKnownStatus && 
                 this.lastKnownStatus !== data.status && 
                 data.status !== 'end' &&
@@ -790,7 +764,6 @@
             }
             this.lastKnownStatus = data?.status;
             
-            // 状態に応じたレンダリング
             switch (accessState) {
                 case AccessState.NOT_REGISTERED:
                     this.renderPatientScreen(contentArea, container, {
@@ -808,21 +781,22 @@
                     break;
                     
                 case AccessState.EXPIRED:
-                    // セッションクリア（履歴は接続時に記録済み）
                     SessionManager.clear(id);
+                    BlockManager.recordConnection(id);
                     this.renderEndScreen(contentArea, container, data.time, 
-                        '新しい診察が開始されたため切断されました');
+                        '新しい診察が開始されたため切断されました', true);
                     break;
                     
                 case AccessState.ENDED:
                     SessionManager.clear(id);
+                    BlockManager.recordConnection(id);
                     this.renderEndScreen(contentArea, container, data.time,
-                        '本日の受付通知は終了しました');
+                        '本日の受付通知は終了しました', true);
                     break;
                     
                 case AccessState.BLOCKED:
                     this.renderEndScreen(contentArea, container, data?.time,
-                        'この番号は以前ご利用済みのため<br>表示できません。<br>お手数ですが、受付で別の番号を<br>お申し付けください。');
+                        'この番号の案内は終了しました。<br>新しい番号をお持ちの方は、<br>QRコードを読み取ってください。', true);
                     break;
                     
                 case AccessState.NO_ACCESS:
@@ -867,7 +841,6 @@
                 title = STATUS_MAP['custom'].title;
                 desc = data.message || '(メッセージなし)';
             } else if (data.status === 'initial') {
-                // 接続直後の初期状態
                 icon = '🏥';
                 title = '受付完了';
                 desc = '順番にトリアージ・診察の準備を行っています。そのままお待ちください。';
@@ -890,8 +863,14 @@
             `;
         },
         
-        renderEndScreen(el, container, time, message) {
+        renderEndScreen(el, container, time, message, showUnblock = false) {
             container.classList.add('mode-end');
+            
+            const unblockHtml = showUnblock ? `
+                <div class="clear-block-link" onclick="App.requestUnblock(${this.patientId})">
+                    再来院の方: 新しい診察で利用する場合はこちら
+                </div>
+            ` : '';
             
             el.innerHTML = `
                 <span class="p-icon">🔚</span>
@@ -900,14 +879,27 @@
                     <div class="p-msg" style="font-weight:bold;">${message}</div>
                     <div class="p-time">最終更新: ${time || '--:--'}</div>
                 </div>
+                ${unblockHtml}
             `;
         },
         
         manualJoin(id, sessionId) {
-            // 履歴クリア（再来院時のみ）してから接続
             BlockManager.clearHistory(id);
             SessionManager.set(id, sessionId);
             this.syncPatientView(id);
+        },
+        
+        requestUnblock(id) {
+            const confirmed = confirm(
+                '新しい診察を開始しますか？\n\n' +
+                '※同じ番号で別の患者様が使用中の場合、\n' +
+                '　正しく表示されない可能性があります。'
+            );
+            if (confirmed) {
+                BlockManager.clearHistory(id);
+                SessionManager.clear(id);
+                location.reload();
+            }
         },
         
         unlockAudio() {
@@ -915,7 +907,7 @@
         }
     };
 
-    // グローバル公開（onclick用）
+    // グローバル公開
     window.App = App;
     
     // 起動
